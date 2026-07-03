@@ -1,0 +1,6 @@
+{
+  "name": "Annapurna Kirana and Oil Store",
+  "description": "Authentic Indian groceries, mustard oil, flour, rice, and gram from Annapurna Kirana and Oil Store with home delivery and complete guarantee of purity.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
