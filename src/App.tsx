@@ -59,8 +59,14 @@ export default function App() {
   });
 
   // Full-Stack Custom States
-  const [productsList, setProductsList] = useState<Product[]>(products);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [productsList, setProductsList] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('annapurna_local_products');
+    return saved ? JSON.parse(saved) : products;
+  });
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    const savedUser = localStorage.getItem('annapurna_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [token, setToken] = useState<string | null>(() => {
     const savedToken = localStorage.getItem('annapurna_token');
     const ownerTimestamp = localStorage.getItem('annapurna_owner_login_timestamp');
@@ -138,6 +144,24 @@ export default function App() {
   const navigateTo = (path: string) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
+    
+    // Sync local changes instantly when switching routes
+    const cachedProducts = localStorage.getItem('annapurna_local_products');
+    if (cachedProducts) {
+      try {
+        setProductsList(JSON.parse(cachedProducts));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    const cachedOrders = localStorage.getItem('grocery_orders');
+    if (cachedOrders) {
+      try {
+        setOrders(JSON.parse(cachedOrders));
+      } catch (e) {
+        console.error(e);
+      }
+    }
   };
 
   // Sync state to local storage
@@ -209,9 +233,19 @@ export default function App() {
   try {
     const { data, error } = await supabase.from('products').select('*');
     if (error) throw error;
-    setProductsList(data);
+    if (data && data.length > 0) {
+      setProductsList(data);
+      localStorage.setItem('annapurna_local_products', JSON.stringify(data));
+    } else {
+      const cached = localStorage.getItem('annapurna_local_products');
+      if (cached) setProductsList(JSON.parse(cached));
+    }
   } catch (err) {
     console.error('Failed to fetch products from Supabase:', err);
+    const cached = localStorage.getItem('annapurna_local_products');
+    if (cached) {
+      setProductsList(JSON.parse(cached));
+    }
   }
 };
     fetchProducts();
@@ -224,22 +258,36 @@ export default function App() {
         setCurrentUser(null);
         return;
       }
+      
+      // If using mock credentials locally (e.g. server is offline or serving HTML), skip remote token validation
+      if (token.startsWith('mock-')) {
+        console.log('[Mock Session] Skipping remote token verification for smooth user experience.');
+        return;
+      }
+
       try {
         const res = await fetch('/api/auth/me', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
-          const data = await res.json();
-          if (data.user) {
-            setCurrentUser(data.user);
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            if (data.user) {
+              setCurrentUser(data.user);
+              localStorage.setItem('annapurna_user', JSON.stringify(data.user));
+            } else {
+              handleLogout();
+            }
           } else {
-            handleLogout();
+            console.warn('[Session Warning] /api/auth/me returned non-JSON response.');
           }
         } else {
           handleLogout();
         }
       } catch (err) {
         console.error('Error validating user token:', err);
+        // Do not force log out on connection timeout or network errors
       }
     };
     fetchMe();
@@ -268,6 +316,7 @@ export default function App() {
     setCurrentUser(user);
     setToken(newToken);
     localStorage.setItem('annapurna_token', newToken);
+    localStorage.setItem('annapurna_user', JSON.stringify(user));
   };
 
   const handleLogout = () => {
@@ -275,6 +324,7 @@ export default function App() {
     setToken(null);
     localStorage.removeItem('annapurna_token');
     localStorage.removeItem('annapurna_owner_login_timestamp');
+    localStorage.removeItem('annapurna_user');
     navigateTo('/');
   };
 
