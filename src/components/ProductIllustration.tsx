@@ -4,8 +4,24 @@ import { Product } from '../types';
 export function getBackgroundImageUrl(id: string): string {
   const normId = id.toLowerCase();
   
+  if (normId === 'maggi-noodles') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/maggi-noodles.jpeg';
+  }
+  
   if (normId === 'desi-chawal') {
     return '/root-images/desi chawal.jpeg';
+  }
+  
+  if (normId === 'patanjali-butter-cookies') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/patanjali-butter-cookies.jpeg';
+  }
+  
+  if (normId === 'raag-palmolein') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/raag-palmolein.jpeg';
+  }
+  
+  if (normId === 'saloni-mustard-oil') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/saloni-mustard-oil.jpeg';
   }
   
   // Patanjali Products
@@ -21,6 +37,18 @@ export function getBackgroundImageUrl(id: string): string {
   
   // Cooking Oils & Ghee
   if (normId.includes('oil') || normId.includes('mustard') || normId.includes('soyabean') || normId.includes('ghee') || normId.includes('kolhu') || normId.includes('groundnut')) {
+    if (normId === 'fortune-groundnut') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/fortune-groundnut.jpeg';
+    }
+    if (normId === 'fortune-mustard-pouch') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/fortune-mustard-bottle.jpeg';
+    }
+    if (normId === 'bail-kolhu-oil') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/bail-kolhu-oil.jpeg';
+    }
+    if (normId === 'ananda-ghee') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/ananda-ghee.jpeg';
+    }
     if (normId === 'kings-soyabean-oil') {
       return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/kings-soyabean-oil.jpeg';
     }
@@ -74,20 +102,38 @@ export function getBackgroundImageUrl(id: string): string {
     if (normId.includes('bounce')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,21%20(1)-1.jpeg';
     }
+    if (normId === 'parle-g') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/parle-g.jpeg';
+    }
     if (normId.includes('parle-g') || normId.includes('parleg') || normId.includes('parle')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,50,38-1.jpeg';
+    }
+    if (normId === 'moms-magic-butter') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/moms-magic-butter.jpeg';
     }
     if (normId.includes('magic')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,50,36%20(3)-1.jpeg';
     }
+    if (normId === 'britannia-bourbon') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/britannia-bourbon.jpeg';
+    }
     if (normId.includes('bourbon')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,50,30%20(1)-1.jpeg';
+    }
+    if (normId === 'good-day-cashew') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/good-day-cashew.jpeg';
     }
     if (normId.includes('cashew') || normId.includes('good-day')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,50,39-1.jpeg';
     }
+    if (normId === 'dark-fantasy-fills') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/dark-fantasy-fills.jpeg';
+    }
     if (normId.includes('fantasy')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013.50.29.jpeg';
+    }
+    if (normId === 'oreo-choco') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/oreo-choco.jpeg';
     }
     if (normId.includes('oreo')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,50,38%20(3)-1.jpeg';
@@ -109,14 +155,26 @@ export function getBackgroundImageUrl(id: string): string {
     if (normId.includes('noodles')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014.14.33.jpeg';
     }
+    if (normId === 'kurkure-masala') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/kings-soyabean-oil.jpeg';
+    }
+    if (normId === 'bingo-tedhe-medhe') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/bingo-tedhe-medhe.jpeg';
+    }
     if (normId.includes('kurkure')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,15%20(1)-1.jpeg';
     }
     if (normId.includes('tedhe-medhe')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,15-1.jpeg';
     }
+    if (normId === 'haldiram-khatta-meetha') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/haldiram-khatta-meetha.jpeg';
+    }
     if (normId === 'haldiram-peanuts') {
       return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/haldiram-peanuts.jpeg';
+    }
+    if (normId === 'haldiram-nut-cracker') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/haldiram-nut-cracker.jpeg';
     }
     if (normId.includes('peanut')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,16%20(1)-1.jpeg';
@@ -138,8 +196,14 @@ export function getBackgroundImageUrl(id: string): string {
     if (normId.includes('moong')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,58,17-1.jpeg';
     }
+    if (normId === 'chana-dal') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/chana-dal.jpeg';
+    }
     if (normId.includes('chana')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,57,36-1.jpeg';
+    }
+    if (normId === 'premium-cloves') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/premium-cloves.jpeg';
     }
     if (normId.includes('clove')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,50,33-1.jpeg';
@@ -153,14 +217,29 @@ export function getBackgroundImageUrl(id: string): string {
     if (normId.includes('sabudana')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,19-1.jpeg';
     }
+    if (normId === 'mothers-potato-papad') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/mothers-potato-papad.jpeg';
+    }
     if (normId.includes('papad')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,18%20(1)-1.jpeg';
+    }
+    if (normId === 'kings-mishri') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/kings-mishri.jpeg';
     }
     if (normId.includes('mishri')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,14,29-1.jpeg';
     }
+    if (normId === 'pure-sugar') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/pure-sugar.jpeg';
+    }
     if (normId.includes('sugar')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,14,31%20(1)-1.jpeg';
+    }
+    if (normId === 'catch-black-salt') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/catch-black-salt.jpeg';
+    }
+    if (normId === 'tata-salt') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/tata-salt.jpeg';
     }
     if (normId.includes('catch') || normId.includes('black-salt')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,14,31-1.jpeg';
