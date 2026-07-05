@@ -112,6 +112,9 @@ export function getBackgroundImageUrl(id: string): string {
     if (normId.includes('tedhe-medhe')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,15-1.jpeg';
     }
+    if (normId === 'haldiram-peanuts') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/haldiram-peanuts.jpeg';
+    }
     if (normId.includes('peanut')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,34,16%20(1)-1.jpeg';
     }

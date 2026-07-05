@@ -601,11 +601,11 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-neutral-800 dark:bg-neutral-950 dark:text-neutral-100 flex flex-col font-sans antialiased transition-colors duration-300">
       {/* 1. TOP HEADER NAVIGATION */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 shadow-sm shrink-0 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
           {/* Logo brand and dispatch location */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveTab('shop'); setSelectedCategory('all'); }}>
-              <div className="w-10 h-10 bg-emerald-800 rounded-xl flex items-center justify-center text-white text-xl shadow-md font-black">
+          <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 cursor-pointer" onClick={() => { setActiveTab('shop'); setSelectedCategory('all'); }}>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-800 rounded-lg sm:rounded-xl flex items-center justify-center text-white text-lg sm:text-xl shadow-md font-black">
                 🪔
               </div>
               <div className="text-left hidden sm:block">
@@ -616,47 +616,47 @@ export default function App() {
           </div>
 
           {/* Core Central Search Bar */}
-          <div className="flex-grow max-w-md relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 dark:text-neutral-500">
-              <Search className="w-4 h-4" />
+          <div className="flex-grow max-w-md relative min-w-0">
+            <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-neutral-400 dark:text-neutral-500">
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <input
               type="text"
-              placeholder="Search cookies, Maggi noodles, soaps, mustard oil..."
+              placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 if (activeTab !== 'shop') setActiveTab('shop');
               }}
-              className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 text-xs font-semibold rounded-xl pl-9 pr-8 py-2.5 focus:outline-none focus:bg-white dark:focus:bg-neutral-850 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-450 dark:placeholder-neutral-500 text-[11px] sm:text-xs font-semibold rounded-lg sm:rounded-xl pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 sm:py-2.5 focus:outline-none focus:bg-white dark:focus:bg-neutral-850 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
               id="global-search-bar"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
             )}
           </div>
 
           {/* Right actions: Navigation Tabs & Shopping Cart Trigger */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             {/* Dark Mode Toggle */}
             <button
               onClick={() => setDarkMode(prev => !prev)}
-              className="p-2.5 rounded-xl transition-all text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-dashed border-neutral-200 dark:border-neutral-700 hover:scale-105"
+              className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-dashed border-neutral-200 dark:border-neutral-700 hover:scale-105 shrink-0"
               title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               id="dark-mode-toggle"
             >
-              {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-indigo-600" />}
+              {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />}
             </button>
 
             {/* Wishlist Link */}
             <button
               onClick={() => setActiveTab(activeTab === 'wishlist' ? 'shop' : 'wishlist')}
-              className={`p-2.5 rounded-xl transition-all relative flex items-center gap-1.5 ${
+              className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all relative flex items-center gap-1 sm:gap-1.5 shrink-0 ${
                 activeTab === 'wishlist'
                   ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
                   : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -664,10 +664,10 @@ export default function App() {
               title="View Wishlist"
               id="nav-wishlist-trigger"
             >
-              <Heart className="w-5 h-5" fill={activeTab === 'wishlist' ? 'currentColor' : 'none'} />
+              <Heart className="w-4 h-4 sm:w-5 sm:h-5" fill={activeTab === 'wishlist' ? 'currentColor' : 'none'} />
               <span className="text-xs font-black hidden md:block">Favorites</span>
               {wishlist.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex justify-center items-center shadow">
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] sm:text-[9px] font-black w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex justify-center items-center shadow">
                   {wishlist.length}
                 </span>
               )}
@@ -676,7 +676,7 @@ export default function App() {
             {/* Order History Link */}
             <button
               onClick={() => setActiveTab(activeTab === 'orders' ? 'shop' : 'orders')}
-              className={`p-2.5 rounded-xl transition-all flex items-center gap-1.5 ${
+              className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all flex items-center gap-1 sm:gap-1.5 shrink-0 ${
                 activeTab === 'orders'
                   ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
                   : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -684,10 +684,10 @@ export default function App() {
               title="Order History"
               id="nav-orders-trigger"
             >
-              <Clock className="w-5 h-5" />
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="text-xs font-black hidden md:block">My Orders</span>
               {orders.length > 0 && (
-                <span className="bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-[9px] font-black px-1.5 py-0.2 rounded-full hidden md:inline">
+                <span className="bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.2 rounded-full hidden sm:inline">
                   {orders.length}
                 </span>
               )}
@@ -695,10 +695,13 @@ export default function App() {
 
             {/* Customer Authentication Panel */}
             {currentUser ? (
-              <div className="flex items-center gap-2 border-l border-neutral-200 dark:border-neutral-800 pl-2">
-                <div className="text-right">
-                  <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold leading-none">Logged in as</p>
-                  <p className="text-xs font-black text-emerald-800 dark:text-emerald-400 leading-tight mt-0.5">{currentUser.name}</p>
+              <div className="flex items-center gap-1.5 border-l border-neutral-200 dark:border-neutral-800 pl-1.5 sm:pl-2 shrink-0">
+                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg sm:rounded-xl text-emerald-700 dark:text-emerald-400" title={`Logged in as ${currentUser.name}`}>
+                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="text-left hidden sm:block max-w-[80px] md:max-w-[120px]">
+                  <p className="text-[8px] text-neutral-400 dark:text-neutral-500 font-bold leading-none uppercase truncate">Logged In</p>
+                  <p className="text-[10px] sm:text-xs font-black text-emerald-800 dark:text-emerald-400 leading-tight mt-0.5 truncate">{currentUser.name}</p>
                 </div>
               </div>
             ) : (
@@ -707,11 +710,11 @@ export default function App() {
                   setAuthModalMode('login');
                   setIsAuthModalOpen(true);
                 }}
-                className="p-2.5 rounded-xl transition-all text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-1.5 border border-dashed border-neutral-200 dark:border-neutral-700"
+                className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-1 sm:gap-1.5 border border-dashed border-neutral-200 dark:border-neutral-700 shrink-0"
                 title="Sign In / Register"
                 id="nav-auth-trigger"
               >
-                <User className="w-5 h-5" />
+                <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-xs font-black hidden md:block">Sign In</span>
               </button>
             )}
@@ -719,13 +722,13 @@ export default function App() {
             {/* Sliding Cart Trigger Button */}
             <button
               onClick={() => setIsCartOpen(true)}
-              className="bg-emerald-700 text-white hover:bg-emerald-800 transition-colors py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg animate-fade-in"
+              className="bg-emerald-700 text-white hover:bg-emerald-800 transition-colors py-1.5 px-2 sm:py-2 sm:px-4 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-2 shadow-md hover:shadow-lg animate-fade-in shrink-0"
               id="nav-cart-trigger"
             >
               <div className="relative">
                 <ShoppingBag className="w-4 h-4" />
                 {totalCartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-black text-[8px] font-black w-4 h-4 rounded-full flex justify-center items-center shadow-sm">
+                  <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-black text-[8px] font-black w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex justify-center items-center shadow-sm">
                     {totalCartCount}
                   </span>
                 )}
