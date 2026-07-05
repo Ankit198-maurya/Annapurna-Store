@@ -21,6 +21,9 @@ export function getBackgroundImageUrl(id: string): string {
   
   // Cooking Oils & Ghee
   if (normId.includes('oil') || normId.includes('mustard') || normId.includes('soyabean') || normId.includes('ghee') || normId.includes('kolhu') || normId.includes('groundnut')) {
+    if (normId === 'kings-soyabean-oil') {
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/kings-soyabean-oil.jpeg';
+    }
     if (normId.includes('soyabean')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,14,32%20(1)-1.jpeg';
     }

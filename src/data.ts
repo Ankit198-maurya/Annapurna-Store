@@ -614,6 +614,7 @@ export const products: Product[] = [
     price: 135,
     mrp: 155,
     unit: '1 Litre',
+    image: 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/kings-soyabean-oil.jpeg',
     description: 'Healthy and light refined soyabean oil. Contains rich Omega-3, Omega-6, and plant sterols for absolute cardiac wellness.',
     isVeg: true,
     specialOffer: 'Goodness of Health',

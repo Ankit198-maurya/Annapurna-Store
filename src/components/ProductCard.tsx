@@ -123,7 +123,7 @@ export default function ProductCard({
   const renderProductIllustration = () => {
   return (
     <img
-      src={product.image}
+      src={product.image || getBackgroundImageUrl(product.id)}
       alt={product.name}
       className="w-full h-full object-cover rounded-2xl"
     />
