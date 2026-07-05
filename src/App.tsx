@@ -9,7 +9,7 @@ import RecipeSection from './components/RecipeSection';
 import AuthModal from './components/AuthModal';
 import OwnerDashboard from './components/OwnerDashboard';
 import { motion, AnimatePresence } from 'motion/react';
-
+import { supabase } from './supabase';
 // Lucide Icons
 import {
   Search,
@@ -205,17 +205,15 @@ export default function App() {
 
   // Fetch dynamic products on launch
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch('/api/products');
-        if (res.ok) {
-          const data = await res.json();
-          setProductsList(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch products from backend:', err);
-      }
-    };
+   const fetchProducts = async () => {
+  try {
+    const { data, error } = await supabase.from('products').select('*');
+    if (error) throw error;
+    setProductsList(data);
+  } catch (err) {
+    console.error('Failed to fetch products from Supabase:', err);
+  }
+};
     fetchProducts();
   }, [currentUser]); // refetch when user/auth changes
 

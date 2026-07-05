@@ -121,8 +121,14 @@ export default function ProductCard({
 
   // Render a brand-matching custom package illustration using purely Tailwind
   const renderProductIllustration = () => {
-    return <ProductIllustration product={product} />;
-  };
+  return (
+    <img
+      src={product.image}
+      alt={product.name}
+      className="w-full h-full object-cover rounded-2xl"
+    />
+  );
+};
 
   const savings = product.mrp - product.price;
 
