@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Product, CartItem, Order, Category } from './types';
 import { categories, products } from './data';
 import ProductCard from './components/ProductCard';
@@ -61,7 +61,20 @@ export default function App() {
   // Full-Stack Custom States
   const [productsList, setProductsList] = useState<Product[]>(products);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('annapurna_token'));
+  const [token, setToken] = useState<string | null>(() => {
+    const savedToken = localStorage.getItem('annapurna_token');
+    const ownerTimestamp = localStorage.getItem('annapurna_owner_login_timestamp');
+    if (savedToken && ownerTimestamp) {
+      const parsedTime = parseInt(ownerTimestamp, 10);
+      const isExpired = Date.now() - parsedTime > 24 * 60 * 60 * 1000; // 24 hours
+      if (isExpired) {
+        localStorage.removeItem('annapurna_token');
+        localStorage.removeItem('annapurna_owner_login_timestamp');
+        return null;
+      }
+    }
+    return savedToken;
+  });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -145,6 +158,51 @@ export default function App() {
     localStorage.setItem('grocery_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
+  useEffect(() => {
+    localStorage.setItem('grocery_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  const ordersRef = useRef(orders);
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
+
+  // Poll pending orders' statuses to keep them updated
+  useEffect(() => {
+    const pollPendingOrders = async () => {
+      const currentOrders = ordersRef.current;
+      const pendingOrders = currentOrders.filter((o) => o.status !== 'delivered');
+      if (pendingOrders.length === 0) return;
+
+      let hasChanges = false;
+      const updatedOrders = await Promise.all(
+        currentOrders.map(async (o) => {
+          if (o.status === 'delivered') return o;
+          try {
+            const res = await fetch(`/api/orders/${o.id}`);
+            if (res.ok) {
+              const updated = await res.json();
+              if (updated.status !== o.status) {
+                hasChanges = true;
+                return updated;
+              }
+            }
+          } catch (err) {
+            console.error(`Failed to poll status for order ${o.id}:`, err);
+          }
+          return o;
+        })
+      );
+
+      if (hasChanges) {
+        setOrders(updatedOrders);
+      }
+    };
+
+    const interval = setInterval(pollPendingOrders, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Fetch dynamic products on launch
   useEffect(() => {
     const fetchProducts = async () => {
@@ -218,8 +276,27 @@ export default function App() {
     setCurrentUser(null);
     setToken(null);
     localStorage.removeItem('annapurna_token');
+    localStorage.removeItem('annapurna_owner_login_timestamp');
     navigateTo('/');
   };
+
+  // Periodic session expiration checker for owner (24 hours)
+  useEffect(() => {
+    const checkExpiry = () => {
+      const ownerTimestamp = localStorage.getItem('annapurna_owner_login_timestamp');
+      if (ownerTimestamp) {
+        const parsedTime = parseInt(ownerTimestamp, 10);
+        const isExpired = Date.now() - parsedTime > 24 * 60 * 60 * 1000; // 24 hours
+        if (isExpired) {
+          console.log('Owner session expired (24h). Logging out...');
+          handleLogout();
+        }
+      }
+    };
+    checkExpiry();
+    const interval = setInterval(checkExpiry, 60000); // Check once a minute
+    return () => clearInterval(interval);
+  }, []);
 
   const handleOwnerLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,6 +312,7 @@ export default function App() {
       if (!response.ok) {
         throw new Error(data.error || 'Login failed');
       }
+      localStorage.setItem('annapurna_owner_login_timestamp', Date.now().toString());
       handleAuthSuccess(data.user, data.token);
       navigateTo('/owner-dashboard');
     } catch (err: any) {
@@ -362,8 +440,10 @@ export default function App() {
 
   // Handle active checkout order placement
   const handlePlaceOrder = async (deliveryAddress: any, paymentMethod: string, couponDiscount: number) => {
-    const totalAmount = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0) + 3; // + packing fee
-    const finalPaid = Math.max(0, totalAmount - couponDiscount + (totalAmount >= 200 ? 0 : 25)); // + delivery fee
+    const itemTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const packingFee = 3;
+    const deliveryCharge = itemTotal >= 99 ? 0 : 15;
+    const finalPaid = itemTotal + packingFee + deliveryCharge;
 
     const orderPayload = {
       items: cart,
@@ -618,19 +698,10 @@ export default function App() {
             {/* Customer Authentication Panel */}
             {currentUser ? (
               <div className="flex items-center gap-2 border-l border-neutral-200 dark:border-neutral-800 pl-2">
-                <div className="text-right hidden md:block">
+                <div className="text-right">
                   <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold leading-none">Logged in as</p>
-                  <p className="text-xs font-black text-neutral-800 dark:text-neutral-100 leading-tight mt-0.5">{currentUser.name}</p>
+                  <p className="text-xs font-black text-emerald-800 dark:text-emerald-400 leading-tight mt-0.5">{currentUser.name}</p>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/55 transition-all rounded-xl font-black text-xs flex items-center gap-1"
-                  title="Logout"
-                  id="nav-logout-btn"
-                >
-                  <X className="w-4 h-4 stroke-[3]" />
-                  <span className="hidden lg:inline">Logout</span>
-                </button>
               </div>
             ) : (
               <button
@@ -748,11 +819,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-2.5 pt-1">
                   <div className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-950/50 border border-emerald-500/20 px-2.5 py-1 rounded-xl">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Free Delivery (≥ ₹200)</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs font-bold text-yellow-400 bg-yellow-950/50 border border-yellow-500/20 px-2.5 py-1 rounded-xl">
-                    <Tag className="w-3.5 h-3.5 text-yellow-400" />
-                    <span>10% Off: DESI10</span>
+                    <span>Free Delivery (≥ ₹99)</span>
                   </div>
                 </div>
               </div>
@@ -887,7 +954,7 @@ export default function App() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-                {products
+                {productsList
                   .filter((p) => wishlist.includes(p.id))
                   .map((product) => (
                     <ProductCard
@@ -940,8 +1007,16 @@ export default function App() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-black text-sm text-neutral-800">Order #{order.id.toUpperCase()}</span>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full uppercase">
-                            SIMULATED SUCCESS
+                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase ${
+                            order.status === 'pending' || !order.status ? 'bg-amber-100 text-amber-800' :
+                            order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                            order.status === 'dispatched' ? 'bg-indigo-100 text-indigo-800' :
+                            'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {order.status === 'pending' || !order.status ? 'Order Placed' :
+                             order.status === 'preparing' ? 'Packing' :
+                             order.status === 'dispatched' ? 'On The Way' :
+                             'Delivered'}
                           </span>
                         </div>
                         <p className="text-[10px] text-neutral-400 font-bold mt-0.5">{order.timestamp}</p>
@@ -1056,14 +1131,24 @@ export default function App() {
             </div>
 
             {/* Owner Details / Call CTA Box (Moved to bottom) */}
-            <div className="pt-2 inline-block">
+            <div className="pt-2 flex flex-col sm:flex-row justify-center items-center gap-4">
               <a 
                 href="tel:9651439599" 
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 active:scale-95 text-neutral-950 px-6 py-3.5 rounded-2xl font-black text-lg sm:text-xl md:text-2xl tracking-wider shadow-[0_8px_20px_rgba(212,175,55,0.25)] border-2 border-yellow-300 transition-all group"
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 active:scale-95 text-neutral-950 px-6 py-3.5 rounded-2xl font-black text-sm sm:text-base md:text-lg tracking-wider shadow-[0_8px_20px_rgba(212,175,55,0.25)] border-2 border-yellow-300 transition-all group"
                 title="Tap to Call Owner"
               >
-                <Phone className="w-6 h-6 fill-neutral-950 animate-bounce" />
-                <span>Mob. 9651439599</span>
+                <Phone className="w-5 h-5 fill-neutral-950 animate-bounce" />
+                <span>Call Owner: 9651439599</span>
+              </a>
+              <a 
+                href="https://wa.me/919651439599?text=Hello%20Annapurna%20Kirana%20Store%2C%20I%20am%20facing%20a%20problem%20with%20an%20order%20or%20need%20help%20with%20something." 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-[#25D366] hover:bg-[#20ba5a] active:scale-95 text-white px-6 py-3.5 rounded-2xl font-black text-sm sm:text-base md:text-lg tracking-wider shadow-[0_8px_20px_rgba(37,211,102,0.25)] border-2 border-emerald-400 transition-all group"
+                title="Chat with Owner on WhatsApp"
+              >
+                <MessageCircle className="w-5 h-5 fill-current" />
+                <span>WhatsApp Owner</span>
               </a>
             </div>
           </div>
@@ -1078,14 +1163,25 @@ export default function App() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative border border-neutral-100 flex flex-col md:flex-row gap-6 overflow-hidden max-h-[90vh]"
+              className="bg-white dark:bg-neutral-900 rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative border border-neutral-100 dark:border-neutral-800 flex flex-col md:flex-row gap-6 overflow-hidden max-h-[90vh]"
             >
               <button
                 onClick={() => setQuickViewProduct(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-neutral-100 transition-colors text-neutral-500 z-10"
+                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-500 dark:text-neutral-400 z-10"
                 id="close-quickview-modal"
               >
                 <X className="w-5 h-5" />
+              </button>
+
+              <button
+                onClick={() => handleToggleWishlist(quickViewProduct.id)}
+                className={`absolute top-4 right-14 p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors z-10 ${
+                  wishlist.includes(quickViewProduct.id) ? 'text-rose-500' : 'text-neutral-400 hover:text-rose-500 dark:text-neutral-500'
+                }`}
+                title={wishlist.includes(quickViewProduct.id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                id={`quickview-wishlist-btn-${quickViewProduct.id}`}
+              >
+                <Heart className="w-5 h-5" fill={wishlist.includes(quickViewProduct.id) ? 'currentColor' : 'none'} />
               </button>
 
               {/* Left Panel - Big illustrative pack */}
@@ -1229,7 +1325,9 @@ export default function App() {
       />
 
       {/* 8. EXPRESS DELIVERY ORDER SIMULATOR MODAL */}
-      <OrderSimulator order={activeOrder} onClose={() => setActiveOrder(null)} />
+      {activeOrder && (
+        <OrderSimulator order={activeOrder} onClose={() => setActiveOrder(null)} />
+      )}
 
       {/* 9. BOTTOM RETAIL INFO FOOTER */}
       <footer className="bg-neutral-900 text-neutral-400 py-10 mt-12 shrink-0 border-t border-neutral-800 font-sans">
@@ -1269,10 +1367,7 @@ export default function App() {
                 Cheaper Rates than usual market shops for additional groceries
               </li>
               <li>
-                Free Home Delivery on baskets ≥ ₹200
-              </li>
-              <li>
-                Flat 10% discount using coupon <span className="text-[#fcd34d] font-black">DESI10</span>
+                Free Home Delivery on baskets ≥ ₹99
               </li>
             </ul>
           </div>
@@ -1289,6 +1384,17 @@ export default function App() {
 
         <div className="max-w-7xl mx-auto px-4 mt-8 pt-6 border-t border-neutral-800 text-center text-[10px] text-neutral-600 font-semibold flex flex-col sm:flex-row justify-between items-center gap-3">
           <span>© 2026 Annapurna Kirana and Oil Store. All rights reserved. Guaranteed purity, prompt delivery.</span>
+          
+          {currentUser && (
+            <button
+              onClick={handleLogout}
+              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-350 font-black uppercase tracking-wider text-xs px-4 py-2 bg-rose-50 dark:bg-rose-950/20 border border-red-200 dark:border-red-900/40 rounded-xl transition-all hover:shadow-sm"
+              id="footer-logout-btn"
+            >
+              Log Out
+            </button>
+          )}
+
           <button
             onClick={() => navigateTo('/owner-login')}
             className="text-neutral-500 hover:text-yellow-400 transition-colors font-extrabold hover:underline uppercase tracking-wider text-[9px]"
@@ -1300,7 +1406,7 @@ export default function App() {
 
       {/* Floating WhatsApp Contact Button */}
       <a
-        href="https://wa.me/919651439599?text=Hello%20Annapurna%20Kirana%20and%20Oil%20Store%2C%20I%20have%20an%20inquiry%20about%20grocery%20items."
+        href="https://wa.me/919651439599?text=Hello%20Annapurna%20Kirana%20and%20Oil%20Store%2C%20I%20am%20facing%20a%20problem%20or%20have%20an%20inquiry%20and%20need%20assistance."
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex items-center justify-center bg-[#25D366] hover:bg-[#20ba5a] text-white w-14 h-14 rounded-full shadow-[0_8px_24px_rgba(37,211,102,0.3)] hover:shadow-[0_12px_32px_rgba(37,211,102,0.45)] transition-all duration-300 hover:scale-110 active:scale-95 group"

@@ -43,6 +43,7 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
   const [pImageFile, setPImageFile] = useState<File | null>(null);
   const [pImageUrl, setPImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -138,11 +139,16 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
     }
   };
 
-  const handleDeleteProduct = async (productId: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+  const handleDeleteProduct = (productId: string, name: string) => {
+    setProductToDelete({ id: productId, name });
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    const { id, name } = productToDelete;
 
     try {
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await fetch(`/api/products/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -150,9 +156,11 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
       if (!response.ok) throw new Error('Failed to delete product');
       
       showSuccess(`"${name}" deleted from store`);
+      setProductToDelete(null);
       fetchDashboardData();
     } catch (err: any) {
       setError(err.message);
+      setProductToDelete(null);
     }
   };
 
@@ -466,7 +474,10 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
                                   o.status === 'dispatched' ? 'bg-indigo-100 text-indigo-800' :
                                   'bg-emerald-100 text-emerald-800'
                                 }`}>
-                                  {o.status}
+                                  {o.status === 'pending' ? 'Order Placed' :
+                                   o.status === 'preparing' ? 'Packing' :
+                                   o.status === 'dispatched' ? 'On The Way' :
+                                   'Delivered'}
                                 </span>
                               </div>
 
@@ -498,42 +509,54 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
                               </div>
 
                               {/* Pipeline status controller */}
-                              <div className="flex flex-wrap gap-1.5 justify-end mt-2">
-                                {o.status === 'pending' && (
+                              <div className="flex flex-col items-end gap-1.5 mt-2">
+                                <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Set Delivery Status:</span>
+                                <div className="flex flex-wrap gap-1 bg-neutral-100 p-1 rounded-xl">
                                   <button
+                                    type="button"
+                                    onClick={() => handleUpdateOrderStatus(o.id, 'pending')}
+                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                      o.status === 'pending'
+                                        ? 'bg-amber-600 text-white shadow-xs'
+                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                    }`}
+                                  >
+                                    Order Placed
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() => handleUpdateOrderStatus(o.id, 'preparing')}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1"
+                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                      o.status === 'preparing'
+                                        ? 'bg-blue-600 text-white shadow-xs'
+                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                    }`}
                                   >
-                                    <span>Accept & Prepare</span>
-                                    <ArrowRight className="w-3 h-3" />
+                                    Packing
                                   </button>
-                                )}
-
-                                {o.status === 'preparing' && (
                                   <button
+                                    type="button"
                                     onClick={() => handleUpdateOrderStatus(o.id, 'dispatched')}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1"
+                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                      o.status === 'dispatched'
+                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                    }`}
                                   >
-                                    <span>Dispatch Order</span>
-                                    <ArrowRight className="w-3 h-3" />
+                                    On The Way
                                   </button>
-                                )}
-
-                                {o.status === 'dispatched' && (
                                   <button
+                                    type="button"
                                     onClick={() => handleUpdateOrderStatus(o.id, 'delivered')}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1"
+                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                      o.status === 'delivered'
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                    }`}
                                   >
-                                    <span>Mark Delivered</span>
-                                    <Check className="w-3.5 h-3.5" />
+                                    Delivered
                                   </button>
-                                )}
-
-                                {o.status === 'delivered' && (
-                                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg uppercase">
-                                    ✓ Order Completed
-                                  </span>
-                                )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -915,6 +938,46 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {productToDelete && (
+          <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative border border-neutral-100 text-center"
+              id="delete-confirm-modal"
+            >
+              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 border border-red-100">
+                ⚠️
+              </div>
+              <h3 className="text-base font-extrabold text-neutral-900 mb-2">Delete Product?</h3>
+              <p className="text-xs text-neutral-500 mb-6 leading-relaxed">
+                Are you sure you want to delete <b className="text-neutral-800">"{productToDelete.name}"</b>? This action cannot be undone.
+              </p>
+
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setProductToDelete(null)}
+                  className="w-1/2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-extrabold text-xs py-3 rounded-xl transition-colors uppercase"
+                  id="cancel-delete-btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteProduct}
+                  className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-colors uppercase tracking-wider"
+                  id="confirm-delete-btn"
+                >
+                  Delete
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

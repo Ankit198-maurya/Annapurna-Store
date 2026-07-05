@@ -22,6 +22,7 @@ import {
 } from './src/db';
 import { Order } from './src/types';
 import { saveOrderToSupabase } from './src/supabase';
+import { paymentRouter } from './src/payment';
 
 
 const app = express();
@@ -64,6 +65,9 @@ const upload = multer({
 });
 
 app.use(express.json());
+
+// Mount Razorpay automated payment routes
+app.use('/api/payment', paymentRouter);
 
 // Serve uploaded images statically
 app.use('/uploads', express.static(uploadsDir));
@@ -360,13 +364,16 @@ app.post('/api/orders', authenticateToken as any, (req: AuthRequest, res: Respon
       deliveryAddress,
       paymentMethod,
       status: 'pending',
-      timestamp: new Date().toLocaleDateString('en-IN', {
+      timestamp: new Date().toLocaleString('en-IN', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      }),
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata',
+      }) + ' IST',
       eta: 10,
     };
 
@@ -399,6 +406,21 @@ app.get('/api/orders', authenticateToken as any, (req: AuthRequest, res: Respons
     // Customer gets only their own orders
     const userOrders = allOrders.filter((o: any) => o.userId === req.user?.id);
     res.json(userOrders);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// FETCH single order by ID
+app.get('/api/orders/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const allOrders = getOrders();
+    const order = allOrders.find((o: any) => o.id === id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+    res.json(order);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

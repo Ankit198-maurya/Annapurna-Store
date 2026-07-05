@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { Order, CartItem } from '../types';
-import { Check, Truck, Clock, ShoppingBag, ShieldCheck, FileText, ArrowRight, X, Phone, User, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Order } from '../types';
+import { Check, Truck, ShoppingBag, ShieldCheck, FileText, ArrowRight, X, Phone, User, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface OrderSimulatorProps {
@@ -9,76 +9,44 @@ interface OrderSimulatorProps {
 }
 
 export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) {
-  const [step, setStep] = useState<number>(0); // 0: Confirmed, 1: Assembling, 2: Out for Delivery, 3: Delivered
-  const [logs, setLogs] = useState<string[]>([]);
-  const logContainerRef = useRef<HTMLDivElement>(null);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(order);
 
-  // Simulation timeline and triggers
+  // Sync state with order prop
+  useEffect(() => {
+    if (order) {
+      setCurrentOrder(order);
+    }
+  }, [order]);
+
+  // Real-time polling of current status
   useEffect(() => {
     if (!order) return;
 
-    setStep(0);
-    setLogs([
-      `[${getTimestamp()}] Payment processed successfully! Total: ₹${order.totalAmount}`,
-      `[${getTimestamp()}] Order #${order.id.substring(4, 10).toUpperCase()} generated.`,
-      `[${getTimestamp()}] Sending order receipt to store assistant at central warehouse...`,
-    ]);
-
-    // Timer for step 1: Assembling
-    const t1 = setTimeout(() => {
-      setStep(1);
-      addLog(`Store manager accepted order. Commencing pack assembly...`);
-      order.items.forEach((item, index) => {
-        setTimeout(() => {
-          addLog(`Item Packed: ${item.product.name} (x${item.quantity}) - checked for freshness.`);
-        }, (index + 1) * 800);
-      });
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/orders/${order.id}`);
+        if (response.ok) {
+          const updatedOrder: Order = await response.json();
+          setCurrentOrder(updatedOrder);
+        }
+      } catch (err) {
+        console.error('Error polling latest order status:', err);
+      }
     }, 3000);
 
-    // Timer for step 2: Out for Delivery
-    const t2 = setTimeout(() => {
-      setStep(2);
-      addLog(`Bag sanitization complete. Standard quality seals attached.`);
-      addLog(`Delivery executive "Ramu Prasad" (+91 98725 44921) assigned to order.`);
-      addLog(`Ramu has picked up your grocery bag. Navigating via GPS to your address...`);
-      addLog(`ETA: 10 minutes.`);
-    }, 8500);
-
-    // Timer for step 3: Delivered
-    const t3 = setTimeout(() => {
-      setStep(3);
-      addLog(`Ramu is arriving near your flat: ${order.deliveryAddress.flat}, ${order.deliveryAddress.area}...`);
-      addLog(`Ding dong! OTP verified. Handed over safe and secure.`);
-      addLog(`Order marked as DELIVERED successfully! Thank you for shopping with us.`);
-    }, 17000);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
+    return () => clearInterval(pollInterval);
   }, [order]);
 
-  // Scroll logs to bottom whenever they are appended
-  useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [logs]);
+  if (!currentOrder) return null;
 
-  const getTimestamp = () => {
-    const d = new Date();
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
+  const step = currentOrder.status === 'pending' ? 0
+             : currentOrder.status === 'preparing' ? 1
+             : currentOrder.status === 'dispatched' ? 2
+             : 3;
 
-  const addLog = (msg: string) => {
-    setLogs((prev) => [...prev, `[${getTimestamp()}] ${msg}`]);
-  };
-
-  if (!order) return null;
 
   const stepsList = [
-    { label: 'Confirmed', desc: 'Payment Verified', icon: '💳' },
+    { label: 'Order Placed', desc: 'Order Confirmed', icon: '💳' },
     { label: 'Packing', desc: 'Assembling in Hub', icon: '📦' },
     { label: 'On The Way', desc: 'Out for Delivery', icon: '🛵' },
     { label: 'Delivered', desc: 'Arrived at Doorstep', icon: '🏡' },
@@ -99,7 +67,7 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-neutral-400 font-bold uppercase">Order ID</p>
-                <p className="text-xs font-mono font-extrabold text-neutral-700">#{order.id.toUpperCase()}</p>
+                <p className="text-xs font-mono font-extrabold text-neutral-700">#{currentOrder.id.toUpperCase()}</p>
               </div>
             </div>
 
@@ -121,12 +89,6 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
                     <p className="text-xs font-black">{stepsList[step].desc}</p>
                   </div>
                 </div>
-                {step < 3 && (
-                  <div className="bg-emerald-900/60 backdrop-blur-md text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-emerald-600/50">
-                    <Clock className="w-3.5 h-3.5 animate-spin" />
-                    <span>ETA: {step === 0 ? '9 mins' : step === 1 ? '6 mins' : '2 mins'}</span>
-                  </div>
-                )}
               </div>
 
               {/* Dynamic animation on map */}
@@ -140,7 +102,7 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
                   className="absolute flex flex-col items-center"
                 >
                   <div className="bg-white text-black text-xs font-black px-2 py-0.5 rounded shadow-lg border border-neutral-100 flex items-center gap-1">
-                    <span>🛵 Ramu</span>
+                    <span>🛵 Delivery Boy</span>
                   </div>
                   <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white shadow mt-1 animate-ping" />
                 </motion.div>
@@ -181,21 +143,6 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
               })}
             </div>
           </div>
-
-          {/* Scrolling Dispatch Logs terminal */}
-          <div className="space-y-2 flex-grow flex flex-col min-h-[140px]">
-            <h4 className="text-[11px] font-bold text-neutral-400 tracking-wider uppercase">Live Dispatch Logs</h4>
-            <div
-              ref={logContainerRef}
-              className="flex-grow bg-neutral-900 rounded-xl p-3 font-mono text-[10px] text-emerald-400 overflow-y-auto space-y-1.5 shadow-inner border border-neutral-850 h-32"
-            >
-              {logs.map((log, index) => (
-                <div key={index} className="leading-relaxed border-l-2 border-emerald-500/20 pl-1.5">
-                  {log}
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* RIGHT PANEL: Retail Tax Invoice Receipt */}
@@ -213,23 +160,23 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
             <div className="grid grid-cols-2 gap-y-2 text-[10px] text-neutral-500 py-4 border-b border-neutral-100">
               <div>
                 <p className="font-bold uppercase text-[8px] text-neutral-400">Invoice Number</p>
-                <p className="font-mono font-bold text-neutral-800">#TAX-{order.id.toUpperCase().substring(0, 8)}</p>
+                <p className="font-mono font-bold text-neutral-800">#TAX-{currentOrder.id.toUpperCase().substring(0, 8)}</p>
               </div>
               <div className="text-right">
-                <p className="font-bold uppercase text-[8px] text-neutral-400">Date/Time</p>
-                <p className="font-bold text-neutral-800">{order.timestamp}</p>
+                <p className="font-bold uppercase text-[8px] text-neutral-400">Date/Time Ordered</p>
+                <p className="font-bold text-neutral-800">{currentOrder.timestamp}</p>
               </div>
               <div>
                 <p className="font-bold uppercase text-[8px] text-neutral-400">Customer Info</p>
-                <p className="font-bold text-neutral-800">{order.deliveryAddress.name}</p>
-                <p className="font-mono text-[9px]">{order.deliveryAddress.phone}</p>
+                <p className="font-bold text-neutral-800">{currentOrder.deliveryAddress.name}</p>
+                <p className="font-mono text-[9px]">{currentOrder.deliveryAddress.phone}</p>
               </div>
               <div className="text-right">
                 <p className="font-bold uppercase text-[8px] text-neutral-400">Address Details</p>
-                <p className="font-semibold text-neutral-800 truncate" title={order.deliveryAddress.flat}>
-                  {order.deliveryAddress.flat}
+                <p className="font-semibold text-neutral-800 truncate" title={currentOrder.deliveryAddress.flat}>
+                  {currentOrder.deliveryAddress.flat}
                 </p>
-                <p className="text-[9px] text-neutral-500 truncate">{order.deliveryAddress.area}</p>
+                <p className="text-[9px] text-neutral-500 truncate">{currentOrder.deliveryAddress.area}</p>
               </div>
             </div>
 
@@ -238,7 +185,7 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
               <p className="text-[8px] font-black text-neutral-400 tracking-wider uppercase mb-1">
                 Purchased Goods (Tax Free/CGST Exempted)
               </p>
-              {order.items.map((item) => (
+              {currentOrder.items.map((item) => (
                 <div key={item.product.id} className="flex justify-between items-start text-xs">
                   <div className="max-w-[70%]">
                     <p className="font-bold text-neutral-800 leading-tight">{item.product.name}</p>
@@ -257,7 +204,7 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
             <div className="pt-3 border-t border-dashed border-neutral-200 space-y-1.5 text-xs text-neutral-600">
               <div className="flex justify-between">
                 <span>Items Subtotal</span>
-                <span>₹{order.items.reduce((s, i) => s + i.product.price * i.quantity, 0)}</span>
+                <span>₹{currentOrder.items.reduce((s, i) => s + i.product.price * i.quantity, 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Packing & Handling Fee</span>
@@ -269,13 +216,13 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
               </div>
               <div className="flex justify-between text-base font-black text-neutral-900 pt-2 border-t border-neutral-200">
                 <span>Final Paid</span>
-                <span>₹{order.totalAmount}</span>
+                <span>₹{currentOrder.totalAmount}</span>
               </div>
             </div>
           </div>
 
           {/* Footer actions once delivery finishes */}
-          <div className="mt-6 pt-4 border-t border-neutral-100">
+          <div className="mt-6 pt-4 border-t border-neutral-100 flex flex-col gap-3">
             {step === 3 ? (
               <motion.button
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -288,9 +235,19 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
                 <span>Return to Store / Place New Order</span>
               </motion.button>
             ) : (
-              <div className="bg-neutral-100 text-neutral-500 rounded-xl p-3 text-center text-[11px] font-bold">
-                🔒 Simulating dispatch. Buttons disabled until delivery completes.
-              </div>
+              <>
+                <div className="bg-neutral-100 text-neutral-500 rounded-xl p-3 text-center text-[11px] font-bold">
+                  ⏳ Waiting for delivery partner updates. The owner is processing your order.
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full border-2 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 text-neutral-700 py-3 px-4 rounded-xl font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+                  id="back-to-home-from-simulator"
+                >
+                  <span>← Back to Home Page</span>
+                </button>
+              </>
             )}
           </div>
         </div>

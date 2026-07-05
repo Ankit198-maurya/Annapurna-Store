@@ -4,6 +4,10 @@ import { Product } from '../types';
 export function getBackgroundImageUrl(id: string): string {
   const normId = id.toLowerCase();
   
+  if (normId === 'desi-chawal') {
+    return '/root-images/desi chawal.jpeg';
+  }
+  
   // Patanjali Products
   if (normId.includes('patanjali') || normId.includes('doodh')) {
     if (normId.includes('soap')) {
@@ -163,7 +167,7 @@ export function getBackgroundImageUrl(id: string): string {
 
   // Toothbrush / Personal Care
   if (normId.includes('toothbrush') || normId.includes('anchor')) {
-    return '/root-images/WhatsApp%20Image%202026-07-03%20at%2013,50,30%20(2)-1.jpeg';
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/WhatsApp%20Image%202026-07-03%20at%2013.50.30%20(2).jpeg';
   }
 
   // Detergent / Cleaners
