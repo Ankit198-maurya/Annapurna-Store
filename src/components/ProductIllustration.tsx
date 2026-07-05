@@ -9,7 +9,7 @@ export function getBackgroundImageUrl(id: string): string {
   }
   
   if (normId === 'desi-chawal') {
-    return '/root-images/desi chawal.jpeg';
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/chawal.jpeg';
   }
   
   if (normId === 'patanjali-butter-cookies') {
@@ -22,6 +22,38 @@ export function getBackgroundImageUrl(id: string): string {
   
   if (normId === 'saloni-mustard-oil') {
     return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/saloni-mustard-oil.jpeg';
+  }
+  
+  if (normId === 'yippee-noodles-4pack') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/yippee-noodles-4pack.jpeg';
+  }
+  
+  if (normId === 'yippee-noodles-single') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/yippee-noodles-single.jpeg';
+  }
+  
+  if (normId === 'soya-chunks') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/soya-chunks.jpeg';
+  }
+  
+  if (normId === 'bounce-choco') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/bounce.jpeg';
+  }
+  
+  if (normId === 'unibic-cashew-almond') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/cashew.jpeg';
+  }
+  
+  if (normId === 'rozana-urad-papad') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/urad.jpeg';
+  }
+  
+  if (normId === 'moong-dal') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/moong.jpeg';
+  }
+  
+  if (normId === 'toor-dal') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/arahar.jpeg';
   }
   
   // Patanjali Products
@@ -239,7 +271,7 @@ export function getBackgroundImageUrl(id: string): string {
       return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/catch-black-salt.jpeg';
     }
     if (normId === 'tata-salt') {
-      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/tata-salt.jpeg';
+      return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/WhatsApp%20Image%202026-07-03%20at%2013.59.32.jpeg';
     }
     if (normId.includes('catch') || normId.includes('black-salt')) {
       return '/root-images/WhatsApp%20Image%202026-07-03%20at%2014,14,31-1.jpeg';
