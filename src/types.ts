@@ -35,6 +35,8 @@ export interface Order {
     pincode: string;
     email?: string;
     address?: string;
+    latitude?: string;
+    longitude?: string;
   };
   paymentMethod: 'cod' | 'upi' | 'card';
   status: 'pending' | 'preparing' | 'dispatched' | 'delivered';

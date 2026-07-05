@@ -48,10 +48,30 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Setup periodic silent polling to fetch fresh orders instantly (every 3 seconds)
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 3000);
+
+    // Cross-tab storage listener to sync immediately when an order is placed locally
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'grocery_orders' || e.key === 'annapurna_local_products') {
+        fetchDashboardData(true);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
@@ -123,6 +143,8 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
             email: addr.email,
             phone: addr.phone,
             address: addr.address || `${addr.flat || ''}, ${addr.area || ''}, ${addr.city || ''}`,
+            latitude: addr.latitude || '',
+            longitude: addr.longitude || '',
             orderCount: (customerMap.get(addr.email)?.orderCount || 0) + 1,
             totalSpent: (customerMap.get(addr.email)?.totalSpent || 0) + o.totalAmount,
           });
@@ -607,9 +629,47 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
                               </div>
 
                               {/* Customer Details */}
-                              <div className="text-xs bg-neutral-50 p-3 rounded-xl border border-neutral-100 space-y-1">
+                              <div className="text-xs bg-neutral-50 p-3 rounded-xl border border-neutral-100 space-y-2">
                                 <p className="font-extrabold text-neutral-800">{o.deliveryAddress.name} ({o.deliveryAddress.phone})</p>
-                                <p className="text-neutral-500 font-semibold text-[11px] leading-tight">{o.deliveryAddress.address}</p>
+                                <p className="text-neutral-500 font-semibold text-[11px] leading-tight">
+                                  {o.deliveryAddress.address || `${o.deliveryAddress.flat || ''}, ${o.deliveryAddress.area || ''}, ${o.deliveryAddress.city || ''}`}
+                                </p>
+                                
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-dashed border-neutral-200">
+                                  {o.deliveryAddress.latitude && o.deliveryAddress.longitude ? (
+                                    <>
+                                      <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                                        GPS Locked: {o.deliveryAddress.latitude}, {o.deliveryAddress.longitude}
+                                      </span>
+                                      <a
+                                        href={`https://www.google.com/maps/search/?api=1&query=${o.deliveryAddress.latitude},${o.deliveryAddress.longitude}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="bg-neutral-900 text-yellow-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg hover:bg-neutral-800 transition-colors flex items-center gap-1 shadow-xs"
+                                      >
+                                        <span>📍 Navigate to Coordinates</span>
+                                      </a>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="bg-amber-50 text-amber-700 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border border-amber-100">
+                                        No GPS tag (Using Text Address)
+                                      </span>
+                                      <a
+                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                          o.deliveryAddress.address || `${o.deliveryAddress.flat || ''}, ${o.deliveryAddress.area || ''}, ${o.deliveryAddress.city || ''}`
+                                        )}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="bg-neutral-900 text-yellow-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg hover:bg-neutral-800 transition-colors flex items-center gap-1 shadow-xs"
+                                      >
+                                        <span>🗺️ Navigate via Address Search</span>
+                                      </a>
+                                    </>
+                                  )}
+                                </div>
+
                                 <p className="text-neutral-400 font-bold text-[10px]">Payment: {o.paymentMethod.toUpperCase()}</p>
                               </div>
 
@@ -813,7 +873,37 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
 
                             <div className="text-[11px] font-semibold text-neutral-500 space-y-1 bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
                               <p className="flex items-center text-neutral-700">📞 {c.phone}</p>
-                              <p className="leading-tight">📍 {c.address}</p>
+                              <p className="leading-tight flex items-start gap-1">
+                                <span>📍</span>
+                                <span>{c.address}</span>
+                              </p>
+                              <div className="pt-1.5 mt-1.5 border-t border-neutral-200/60 flex items-center gap-1.5">
+                                {c.latitude && c.longitude ? (
+                                  <>
+                                    <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">GPS Pinned</span>
+                                    <a
+                                      href={`https://www.google.com/maps/search/?api=1&query=${c.latitude},${c.longitude}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[9px] font-black uppercase text-neutral-900 bg-yellow-400 px-2 py-0.5 rounded shadow-2xs hover:bg-neutral-800 hover:text-white transition-all"
+                                    >
+                                      Open Google Maps
+                                    </a>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-[9px] font-semibold uppercase text-neutral-400">No GPS Tag</span>
+                                    <a
+                                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[9px] font-black uppercase text-neutral-900 bg-neutral-100 px-2 py-0.5 rounded border hover:bg-neutral-800 hover:text-white transition-all"
+                                    >
+                                      Search Location
+                                    </a>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
 
