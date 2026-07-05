@@ -18,23 +18,78 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
     }
   }, [order]);
 
-  // Real-time polling of current status
+  // Real-time polling or local simulation of current status
   useEffect(() => {
     if (!order) return;
 
+    // 1. Attempt to poll the backend if the server is available
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(`/api/orders/${order.id}`);
         if (response.ok) {
-          const updatedOrder: Order = await response.json();
-          setCurrentOrder(updatedOrder);
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const updatedOrder: Order = await response.json();
+            setCurrentOrder(updatedOrder);
+          }
         }
       } catch (err) {
         console.error('Error polling latest order status:', err);
       }
-    }, 3000);
+    }, 4000);
 
-    return () => clearInterval(pollInterval);
+    // 2. Client-side automatic simulation sequence
+    // Automatically progress order statuses locally over time (12s per stage)
+    // so that the customer always has a fully interactive, successful, visual feedback experience!
+    // "pending" -> "preparing" -> "dispatched" -> "delivered"
+    const simulateStep = () => {
+      setCurrentOrder((prev) => {
+        if (!prev) return null;
+        let nextStatus: Order['status'] = prev.status;
+        if (prev.status === 'pending') {
+          nextStatus = 'preparing';
+        } else if (prev.status === 'preparing') {
+          nextStatus = 'dispatched';
+        } else if (prev.status === 'dispatched') {
+          nextStatus = 'delivered';
+        } else {
+          return prev;
+        }
+
+        // Keep the local state persisted in localStorage in sync too!
+        try {
+          const savedOrdersStr = localStorage.getItem('grocery_orders');
+          if (savedOrdersStr) {
+            const savedOrders: Order[] = JSON.parse(savedOrdersStr);
+            const index = savedOrders.findIndex((o) => o.id === prev.id);
+            if (index !== -1) {
+              savedOrders[index].status = nextStatus;
+              if (nextStatus === 'preparing') savedOrders[index].eta = 8;
+              else if (nextStatus === 'dispatched') savedOrders[index].eta = 4;
+              else if (nextStatus === 'delivered') savedOrders[index].eta = 0;
+              localStorage.setItem('grocery_orders', JSON.stringify(savedOrders));
+            }
+          }
+        } catch (e) {
+          console.error('Failed to sync simulated status to localStorage:', e);
+        }
+
+        return {
+          ...prev,
+          status: nextStatus,
+          eta: nextStatus === 'preparing' ? 8 : nextStatus === 'dispatched' ? 4 : 0,
+        };
+      });
+    };
+
+    const localSimulationTimer = setInterval(() => {
+      simulateStep();
+    }, 12000); // 12 seconds per stage
+
+    return () => {
+      clearInterval(pollInterval);
+      clearInterval(localSimulationTimer);
+    };
   }, [order]);
 
   if (!currentOrder) return null;

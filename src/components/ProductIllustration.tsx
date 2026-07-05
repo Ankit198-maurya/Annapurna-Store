@@ -56,6 +56,14 @@ export function getBackgroundImageUrl(id: string): string {
     return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/arahar.jpeg';
   }
   
+  if (normId === 'patanjali-doodh') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/patanjali-doodh.jpeg';
+  }
+  
+  if (normId === 'zhakaas-rice-papad') {
+    return 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/zhakaas.jpeg';
+  }
+  
   // Patanjali Products
   if (normId.includes('patanjali') || normId.includes('doodh')) {
     if (normId.includes('soap')) {
