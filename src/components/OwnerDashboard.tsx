@@ -761,7 +761,7 @@ try {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-150">
-                          {products.map((p) => (
+                         {products.filter(p => p).map((p) => (
                             <tr key={p.id} className="hover:bg-neutral-50">
                               <td className="p-3 pl-4">
                                 <div className="flex items-center space-x-3">
@@ -847,7 +847,7 @@ try {
                         <p className="text-xs text-neutral-400 mt-1">When customers place orders, their contact and shipping profiles will populate here automatically.</p>
                       </div>
                     ) : (
-                      customers.map((c, i) => (
+                      customers.filter(c => c).map((c, i) => (
                         <div key={i} className="bg-white border border-neutral-200 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
                           <div className="space-y-2">
                             <div className="flex justify-between items-start">
