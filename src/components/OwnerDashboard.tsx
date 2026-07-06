@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Product, Order } from '../types';
 import { products as fallbackProducts } from '../data';
-import { supabase } from '../supabase';
+import { supabase, normalizeSupabaseOrder, normalizeSupabaseProduct } from '../supabase';
 interface OwnerDashboardProps {
   onLogout: () => void;
   token: string;
@@ -76,14 +76,14 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
       
-     let ordData: Order[] = [];
-try {
-  const { data, error } = await supabase.from('orders').select('*');
-  if (error) throw error;
-  ordData = data || [];
-} catch (ordErr) {
-  console.warn('Failed to load orders from Supabase:', ordErr);
-}
+      let ordData: Order[] = [];
+      try {
+        const { data, error } = await supabase.from('orders').select('*');
+        if (error) throw error;
+        ordData = (data || []).map(normalizeSupabaseOrder);
+      } catch (ordErr) {
+        console.warn('Failed to load orders from Supabase:', ordErr);
+      }
       
       // Merge with localStorage orders
       const savedOrdersStr = localStorage.getItem('grocery_orders');
@@ -101,14 +101,15 @@ try {
         }
       }
       setOrders(ordData);
-let prodData: Product[] = [];
-try {
-  const { data, error } = await supabase.from('products').select('*');
-  if (error) throw error;
-  prodData = data || [];
-} catch (prodErr) {
-  console.warn('Failed to load products from Supabase:', prodErr);
-}
+
+      let prodData: Product[] = [];
+      try {
+        const { data, error } = await supabase.from('products').select('*');
+        if (error) throw error;
+        prodData = (data || []).map(normalizeSupabaseProduct);
+      } catch (prodErr) {
+        console.warn('Failed to load products from Supabase:', prodErr);
+      }
 
       // Merge / Fallback with local products
       const localProductsStr = localStorage.getItem('annapurna_local_products');
@@ -592,7 +593,7 @@ try {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {orders.filter(o => o).map((o) => (
+                        {orders.map((o) => (
                           <div 
                             key={o.id} 
                             className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-shadow"
@@ -761,7 +762,7 @@ try {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-150">
-                         {products.filter(p => p).map((p) => (
+                          {products.map((p) => (
                             <tr key={p.id} className="hover:bg-neutral-50">
                               <td className="p-3 pl-4">
                                 <div className="flex items-center space-x-3">
@@ -847,7 +848,7 @@ try {
                         <p className="text-xs text-neutral-400 mt-1">When customers place orders, their contact and shipping profiles will populate here automatically.</p>
                       </div>
                     ) : (
-                      customers.filter(c => c).map((c, i) => (
+                      customers.map((c, i) => (
                         <div key={i} className="bg-white border border-neutral-200 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
                           <div className="space-y-2">
                             <div className="flex justify-between items-start">
