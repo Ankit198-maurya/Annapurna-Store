@@ -76,17 +76,26 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      let ordData: Order[] = [];
-      try {
-        const { data, error } = await supabase.from('orders').select('*');
-        if (error) throw error;
-        ordData = (data || []).map(normalizeSupabaseOrder);
-      } catch (ordErr) {
-        console.warn('Failed to load orders from Supabase:', ordErr);
-      }
+     let ordData: Order[] = [];
+
+try {
+    const response = await fetch('/api/orders', {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to load orders');
+    }
+
+    ordData = await response.json();
+} catch (err) {
+    console.error(err);
+}
       
       // Merge with localStorage orders
-      const savedOrdersStr = localStorage.getItem('grocery_orders');
+      
       if (savedOrdersStr) {
         try {
           const savedOrders = JSON.parse(savedOrdersStr) as Order[];
