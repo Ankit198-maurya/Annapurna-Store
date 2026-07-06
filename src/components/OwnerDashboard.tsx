@@ -592,7 +592,7 @@ try {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {orders.map((o) => (
+                        {orders.filter(o => o).map((o) => (
                           <div 
                             key={o.id} 
                             className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-shadow"
