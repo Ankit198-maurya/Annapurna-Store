@@ -69,7 +69,7 @@ export default function App() {
   });
   const [token, setToken] = useState<string | null>(() => {
     const savedToken = localStorage.getItem('annapurna_token');
-    const ownerTimestamp = localStorage.getItem('annapurna_owner_login_timestamp');
+    const fetchOwnerOrdersTimestamp = localStorage.getItem('annapurna_owner_login_timestamp');
     if (savedToken && ownerTimestamp) {
       const parsedTime = parseInt(ownerTimestamp, 10);
       const isExpired = Date.now() - parsedTime > 24 * 60 * 60 * 1000; // 24 hours

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Product, Order } from '../types';
 import { products as fallbackProducts } from '../data';
-
+import { supabase } from '../supabase';
 interface OwnerDashboardProps {
   onLogout: () => void;
   token: string;
@@ -76,19 +76,14 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      let ordData: Order[] = [];
-      try {
-        // Fetch Orders
-        const ordRes = await fetch('/api/orders', { headers });
-        if (ordRes.ok) {
-          const contentType = ordRes.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            ordData = await ordRes.json();
-          }
-        }
-      } catch (ordErr) {
-        console.warn('Failed to load orders from backend, falling back to local storage', ordErr);
-      }
+     let ordData: Order[] = [];
+try {
+  const { data, error } = await supabase.from('orders').select('*');
+  if (error) throw error;
+  ordData = data || [];
+} catch (ordErr) {
+  console.warn('Failed to load orders from Supabase:', ordErr);
+}
       
       // Merge with localStorage orders
       const savedOrdersStr = localStorage.getItem('grocery_orders');
@@ -106,20 +101,14 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
         }
       }
       setOrders(ordData);
-
-      let prodData: Product[] = [];
-      try {
-        // Fetch Products
-        const prodRes = await fetch('/api/products');
-        if (prodRes.ok) {
-          const contentType = prodRes.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            prodData = await prodRes.json();
-          }
-        }
-      } catch (prodErr) {
-        console.warn('Failed to load products from backend, falling back to local storage', prodErr);
-      }
+let prodData: Product[] = [];
+try {
+  const { data, error } = await supabase.from('products').select('*');
+  if (error) throw error;
+  prodData = data || [];
+} catch (prodErr) {
+  console.warn('Failed to load products from Supabase:', prodErr);
+}
 
       // Merge / Fallback with local products
       const localProductsStr = localStorage.getItem('annapurna_local_products');
