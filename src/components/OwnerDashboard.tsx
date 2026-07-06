@@ -668,7 +668,7 @@ try {
                                 <ul className="list-disc list-inside space-y-0.5">
                                   {o.items.map((it, idx) => (
                                     <li key={idx}>
-                                      {it.product.name} - <span className="font-extrabold text-neutral-800">{it.quantity} x ₹{it.product.price}</span>
+                                      {it.product?.name || 'Unknown Product'} - <span className="font-extrabold text-neutral-800">{it.quantity} x ₹{it.product?.price || 0}</span>
                                     </li>
                                   ))}
                                 </ul>
