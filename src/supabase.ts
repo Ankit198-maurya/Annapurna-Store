@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import { Order, Product } from './types';
 
-const supabaseUrl = (typeof process !== 'undefined' && process.env?.SUPABASE_URL) || (import.meta as any).env?.VITE_SUPABASE_URL || 'https://kkfemwduwimomkalgzua.supabase.co';
-const supabaseKey = (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_wCXTH0DusaCDVjLKSlIxtw_8KJ8oklp';
+const supabaseUrl = 
+  (typeof process !== 'undefined' && process.env?.SUPABASE_URL) || 
+  (typeof window !== 'undefined' && (window as any).env?.VITE_SUPABASE_URL) ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) || 
+  'https://kkfemwduwimomkalgzua.supabase.co';
+
+const supabaseKey = 
+  (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) || 
+  (typeof window !== 'undefined' && (window as any).env?.VITE_SUPABASE_ANON_KEY) ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) || 
+  'sb_publishable_wCXTH0DusaCDVjLKSlIxtw_8KJ8oklp';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 

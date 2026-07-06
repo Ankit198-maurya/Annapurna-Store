@@ -88,16 +88,21 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
       // Merge with localStorage orders
       const savedOrdersStr = localStorage.getItem('grocery_orders');
       if (savedOrdersStr) {
-        const savedOrders = JSON.parse(savedOrdersStr) as Order[];
-        if (ordData.length === 0) {
-          ordData = savedOrders;
-        } else {
-          const existingIds = new Set(ordData.map(o => o.id));
-          savedOrders.forEach(o => {
-            if (!existingIds.has(o.id)) {
-              ordData.push(o);
-            }
-          });
+        try {
+          const savedOrders = JSON.parse(savedOrdersStr) as Order[];
+          const normalizedLocalOrders = (savedOrders || []).map(normalizeSupabaseOrder);
+          if (ordData.length === 0) {
+            ordData = normalizedLocalOrders;
+          } else {
+            const existingIds = new Set(ordData.map(o => o.id));
+            normalizedLocalOrders.forEach(o => {
+              if (o && o.id && !existingIds.has(o.id)) {
+                ordData.push(o);
+              }
+            });
+          }
+        } catch (jsonErr) {
+          console.warn('Failed to parse or normalize grocery_orders from localStorage:', jsonErr);
         }
       }
       setOrders(ordData);
@@ -114,9 +119,14 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
       // Merge / Fallback with local products
       const localProductsStr = localStorage.getItem('annapurna_local_products');
       if (localProductsStr) {
-        prodData = JSON.parse(localProductsStr);
+        try {
+          const parsed = JSON.parse(localProductsStr) as Product[];
+          prodData = (parsed || []).map(normalizeSupabaseProduct);
+        } catch (e) {
+          console.warn('Failed to parse local products from localStorage:', e);
+        }
       } else if (prodData.length === 0) {
-        prodData = fallbackProducts;
+        prodData = fallbackProducts.map(normalizeSupabaseProduct);
         localStorage.setItem('annapurna_local_products', JSON.stringify(fallbackProducts));
       } else {
         localStorage.setItem('annapurna_local_products', JSON.stringify(prodData));
@@ -620,13 +630,13 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
 
                               {/* Customer Details */}
                               <div className="text-xs bg-neutral-50 p-3 rounded-xl border border-neutral-100 space-y-2">
-                                <p className="font-extrabold text-neutral-800">{o.deliveryAddress.name} ({o.deliveryAddress.phone})</p>
+                                <p className="font-extrabold text-neutral-800">{(o.deliveryAddress?.name) || 'Unknown Customer'} ({(o.deliveryAddress?.phone) || 'No Phone'})</p>
                                 <p className="text-neutral-500 font-semibold text-[11px] leading-tight">
-                                  {o.deliveryAddress.address || `${o.deliveryAddress.flat || ''}, ${o.deliveryAddress.area || ''}, ${o.deliveryAddress.city || ''}`}
+                                  {(o.deliveryAddress?.address) || `${(o.deliveryAddress?.flat) || ''}, ${(o.deliveryAddress?.area) || ''}, ${(o.deliveryAddress?.city) || ''}` || 'No Address Provided'}
                                 </p>
                                 
                                 <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-dashed border-neutral-200">
-                                  {o.deliveryAddress.latitude && o.deliveryAddress.longitude ? (
+                                  {o.deliveryAddress?.latitude && o.deliveryAddress?.longitude ? (
                                     <>
                                       <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
                                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
@@ -648,7 +658,7 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
                                       </span>
                                       <a
                                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                          o.deliveryAddress.address || `${o.deliveryAddress.flat || ''}, ${o.deliveryAddress.area || ''}, ${o.deliveryAddress.city || ''}`
+                                          o.deliveryAddress?.address || `${o.deliveryAddress?.flat || ''}, ${o.deliveryAddress?.area || ''}, ${o.deliveryAddress?.city || ''}`
                                         )}`}
                                         target="_blank"
                                         rel="noreferrer"
@@ -660,7 +670,7 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
                                   )}
                                 </div>
 
-                                <p className="text-neutral-400 font-bold text-[10px]">Payment: {o.paymentMethod.toUpperCase()}</p>
+                                <p className="text-neutral-400 font-bold text-[10px]">Payment: {String(o.paymentMethod || 'COD').toUpperCase()}</p>
                               </div>
 
                               {/* Order items */}
@@ -785,7 +795,7 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
                               </td>
                               <td className="p-3">
                                 <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded-md uppercase text-[9px] font-extrabold">
-                                  {p.category.replace('-', ' ')}
+                                  {(p.category || 'general').replace('-', ' ')}
                                 </span>
                               </td>
                               <td className="p-3">
