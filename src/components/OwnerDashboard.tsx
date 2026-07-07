@@ -79,41 +79,33 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
      let ordData: Order[] = [];
 
 try {
-    const response = await fetch('/api/orders', {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    if (!response.ok) {
-        throw new Error('Failed to load orders');
-    }
+    if (error) throw error;
 
-    const apiData = await response.json();
+    ordData = (data || []).map(normalizeSupabaseOrder);
 
-    console.log("Orders received from API:", apiData);
-
-    ordData = apiData;
+    console.log("Orders received from Supabase:", ordData);
 } catch (err) {
-    console.error(err);
+    console.error('Failed to load orders from Supabase:', err);
 }
       
-      // Merge with localStorage orders
+      // Merge in any orders still sitting only in this browser's localStorage
+      // (e.g. saved while offline and not yet synced to Supabase)
       const savedOrdersStr = localStorage.getItem('grocery_orders');
       if (savedOrdersStr) {
         try {
           const savedOrders = JSON.parse(savedOrdersStr) as Order[];
           const normalizedLocalOrders = (savedOrders || []).map(normalizeSupabaseOrder);
-          if (ordData.length === 0) {
-            ordData = normalizedLocalOrders;
-          } else {
-            const existingIds = new Set(ordData.map(o => o.id));
-            normalizedLocalOrders.forEach(o => {
-              if (o && o.id && !existingIds.has(o.id)) {
-                ordData.push(o);
-              }
-            });
-          }
+          const existingIds = new Set(ordData.map(o => o.id));
+          normalizedLocalOrders.forEach(o => {
+            if (o && o.id && !existingIds.has(o.id)) {
+              ordData.push(o);
+            }
+          });
         } catch (jsonErr) {
           console.warn('Failed to parse or normalize grocery_orders from localStorage:', jsonErr);
         }
@@ -174,34 +166,25 @@ try {
 
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
-      try {
-        const response = await fetch(`/api/orders/${orderId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status }),
-        });
-        
-        if (!response.ok) {
-          const d = await response.json();
-          throw new Error(d.error || 'Failed to update order');
-        }
-      } catch (backendErr) {
-        console.warn('[Backend Offline] Updating order status locally:', backendErr);
-      }
+      // The orders table's identifier column is "Name" (not "id"), and it
+      // has no "eta" column - eta is derived client-side from status instead.
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('Name', orderId);
 
-      // Seamless local update fallback
+      if (error) throw error;
+
+      const eta = status === 'preparing' ? 8 : status === 'dispatched' ? 4 : status === 'delivered' ? 0 : undefined;
+
+      // Also patch any copy sitting in this browser's localStorage so it stays in sync
       const savedOrdersStr = localStorage.getItem('grocery_orders');
       if (savedOrdersStr) {
         const savedOrders = JSON.parse(savedOrdersStr) as Order[];
         const idx = savedOrders.findIndex(o => o.id === orderId);
         if (idx !== -1) {
           savedOrders[idx].status = status;
-          if (status === 'preparing') savedOrders[idx].eta = 8;
-          else if (status === 'dispatched') savedOrders[idx].eta = 4;
-          else if (status === 'delivered') savedOrders[idx].eta = 0;
+          if (eta !== undefined) savedOrders[idx].eta = eta;
           localStorage.setItem('grocery_orders', JSON.stringify(savedOrders));
         }
       }
@@ -209,7 +192,8 @@ try {
       showSuccess(`Order ${orderId} is now ${status}`);
       fetchDashboardData();
     } catch (err: any) {
-      setError(err.message);
+      console.error('Failed to update order status in Supabase:', err);
+      setError(err.message || 'Failed to update order status');
     }
   };
 
