@@ -207,7 +207,7 @@ export default function App() {
               .from('orders')
               .select('*')
               .eq('Name', o.id)
-              .single();
+              .maybeSingle();
             if (!error && data) {
               const updated = normalizeSupabaseOrder(data);
               if (updated.status !== o.status) {
@@ -216,7 +216,7 @@ export default function App() {
               }
             }
           } catch (err) {
-            console.error(`Failed to poll status for order ${o.id}:`, err);
+            // Order not found in Supabase (e.g. local-only fallback order) - skip silently
           }
           return o;
         })
