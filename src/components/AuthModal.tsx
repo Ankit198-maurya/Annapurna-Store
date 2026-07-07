@@ -38,6 +38,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
         if (signUpError) throw signUpError;
         if (!data.user) throw new Error('Signup failed. Please try again.');
 
+        // If email confirmation is required, there's no session yet - the
+        // profile insert would fail (unauthenticated), so stop here and
+        // let the user know to check their email first.
+        if (!data.session) {
+          setError('Account created! Please check your email to confirm before logging in.');
+          setLoading(false);
+          return;
+        }
+
         // Store the extra profile details (name, phone, address) linked to this auth user.
         const { error: profileError } = await supabase
           .from('profiles')
@@ -49,7 +58,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
             role: 'customer',
           }]);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          // Don't block login just because the profile row failed to save -
+          // log it so it's visible, but let the user in.
+          console.error('[Profile Save Error]', profileError.message);
+        }
 
         const user = {
           id: data.user.id,
@@ -59,13 +72,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           address,
           role: 'customer',
         };
-
-        // If email confirmation is required, there may be no session yet.
-        if (!data.session) {
-          setError('Account created! Please check your email to confirm before logging in.');
-          setLoading(false);
-          return;
-        }
 
         onAuthSuccess(user, data.session.access_token);
         onClose();
@@ -84,7 +90,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           .eq('id', data.user.id)
           .maybeSingle();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('[Profile Fetch Error]', profileError.message);
+        }
 
         const user = {
           id: data.user.id,
