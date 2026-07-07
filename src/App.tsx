@@ -9,7 +9,7 @@ import RecipeSection from './components/RecipeSection';
 import AuthModal from './components/AuthModal';
 import OwnerDashboard from './components/OwnerDashboard';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from './supabase';
+import { supabase, saveOrderToSupabase, normalizeSupabaseOrder } from './supabase';
 // Lucide Icons
 import {
   Search,
@@ -203,9 +203,13 @@ export default function App() {
         currentOrders.map(async (o) => {
           if (o.status === 'delivered') return o;
           try {
-            const res = await fetch(`/api/orders/${o.id}`);
-            if (res.ok) {
-              const updated = await res.json();
+            const { data, error } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('Name', o.id)
+              .single();
+            if (!error && data) {
+              const updated = normalizeSupabaseOrder(data);
               if (updated.status !== o.status) {
                 hasChanges = true;
                 return updated;
@@ -298,15 +302,17 @@ export default function App() {
     const fetchOrders = async () => {
       if (!token || !currentUser || currentUser.role === 'owner') return;
       try {
-        const res = await fetch('/api/orders', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setOrders(data);
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data) {
+          setOrders(data.map(normalizeSupabaseOrder));
         }
       } catch (err) {
-        console.error('Error fetching order records:', err);
+        console.error('Error fetching order records from Supabase:', err);
       }
     };
     fetchOrders();
@@ -553,38 +559,25 @@ export default function App() {
     };
 
     try {
-      const headers: any = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const savedRows = await saveOrderToSupabase(localOrder, currentUser?.id ?? null);
 
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(orderPayload),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to submit order to backend');
-      }
-
-      // Check if response is JSON to prevent crashes on static hosting returning index.html
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const savedOrder = await res.json();
+      if (savedRows && savedRows.length > 0) {
+        const savedOrder = normalizeSupabaseOrder(savedRows[0]);
         setOrders((prev) => [savedOrder, ...prev]);
         setActiveOrder(savedOrder); // Starts live simulation screen
       } else {
-        // Fallback if the endpoint exists but served HTML/text (e.g. static hosting)
-        console.warn('[Backend Warning] /api/orders returned non-JSON. Placing order in local database.');
+        // Supabase insert failed (schema mismatch, RLS, offline, etc.) - keep the
+        // customer's checkout flow working locally, but this order will NOT be
+        // visible to the owner until Supabase sync succeeds.
+        console.warn('[Supabase Warning] Order was not confirmed as saved. Falling back to local-only order.');
         setOrders((prev) => [localOrder, ...prev]);
         setActiveOrder(localOrder);
       }
-      
+
       setCart([]); // Clears cart
       setIsCartOpen(false); // Closes cart panel
     } catch (err) {
-      console.warn('[Backend Offline] Seamlessly placing order via secure local database:', err);
+      console.warn('[Supabase Offline] Seamlessly placing order via local database:', err);
       // Fallback local order placement - ensures customer never faces blocking payment issues
       setOrders((prev) => [localOrder, ...prev]);
       setActiveOrder(localOrder); // Starts live simulation screen
