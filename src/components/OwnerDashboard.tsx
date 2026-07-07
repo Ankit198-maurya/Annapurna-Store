@@ -138,20 +138,19 @@ try {
         console.warn('Failed to load products from Supabase:', prodErr);
       }
 
-      // Merge / Fallback with local products
-      const localProductsStr = localStorage.getItem('annapurna_local_products');
-      if (localProductsStr) {
-        try {
-          const parsed = JSON.parse(localProductsStr) as Product[];
-          prodData = (parsed || []).map(normalizeSupabaseProduct);
-        } catch (e) {
-          console.warn('Failed to parse local products from localStorage:', e);
+      // Only fall back to localStorage/hardcoded products if Supabase couldn't be reached at all
+      if (prodData.length === 0) {
+        const localProductsStr = localStorage.getItem('annapurna_local_products');
+        if (localProductsStr) {
+          try {
+            const parsed = JSON.parse(localProductsStr) as Product[];
+            prodData = (parsed || []).map(normalizeSupabaseProduct);
+          } catch (e) {
+            console.warn('Failed to parse local products from localStorage:', e);
+          }
+        } else {
+          prodData = fallbackProducts.map(normalizeSupabaseProduct);
         }
-      } else if (prodData.length === 0) {
-        prodData = fallbackProducts.map(normalizeSupabaseProduct);
-        localStorage.setItem('annapurna_local_products', JSON.stringify(fallbackProducts));
-      } else {
-        localStorage.setItem('annapurna_local_products', JSON.stringify(prodData));
       }
       setProducts(prodData);
 
@@ -221,22 +220,14 @@ try {
 
   const handleToggleStock = async (product: Product) => {
     try {
-      try {
-        const response = await fetch(`/api/products/${product.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ inStock: !product.inStock }),
-        });
+      const { error } = await supabase
+        .from('products')
+        .update({ in_stock: !product.inStock })
+        .eq('id', product.id);
 
-        if (!response.ok) throw new Error('Failed to update product stock');
-      } catch (backendErr) {
-        console.warn('[Backend Offline] Toggling product stock locally:', backendErr);
-      }
+      if (error) throw error;
 
-      // Seamless local product update fallback
+      // Also patch local cache so UI stays consistent if offline
       const localProductsStr = localStorage.getItem('annapurna_local_products');
       if (localProductsStr) {
         const localProducts = JSON.parse(localProductsStr) as Product[];
@@ -250,7 +241,8 @@ try {
       showSuccess(`${product.name} is now ${!product.inStock ? 'In Stock' : 'Out of Stock'}`);
       fetchDashboardData();
     } catch (err: any) {
-      setError(err.message);
+      console.error('Failed to toggle stock in Supabase:', err);
+      setError(err.message || 'Failed to update stock');
     }
   };
 
@@ -263,18 +255,14 @@ try {
     const { id, name } = productToDelete;
 
     try {
-      try {
-        const response = await fetch(`/api/products/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
 
-        if (!response.ok) throw new Error('Failed to delete product');
-      } catch (backendErr) {
-        console.warn('[Backend Offline] Deleting product locally:', backendErr);
-      }
+      if (error) throw error;
 
-      // Seamless local product delete fallback
+      // Also remove from local cache
       const localProductsStr = localStorage.getItem('annapurna_local_products');
       if (localProductsStr) {
         const localProducts = JSON.parse(localProductsStr) as Product[];
@@ -286,7 +274,8 @@ try {
       setProductToDelete(null);
       fetchDashboardData();
     } catch (err: any) {
-      setError(err.message);
+      console.error('Failed to delete product from Supabase:', err);
+      setError(err.message || 'Failed to delete product');
       setProductToDelete(null);
     }
   };
@@ -299,23 +288,25 @@ try {
     setUploadingImage(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
+      const fileExt = file.name.split('.').pop();
+      const filePath = `products/${Date.now()}-${Math.floor(Math.random() * 100000)}.${fileExt}`;
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to upload image');
+      const { error: uploadError } = await supabase.storage
+        .from('store')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
-      setPImageUrl(data.imageUrl);
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('store')
+        .getPublicUrl(filePath);
+
+      setPImageUrl(publicUrlData.publicUrl);
       showSuccess('Product image uploaded successfully!');
     } catch (err: any) {
-      setError(err.message);
+      console.error('Failed to upload image to Supabase Storage:', err);
+      setError(err.message || 'Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
@@ -362,6 +353,7 @@ try {
       return;
     }
 
+    // Supabase table uses snake_case columns (confirmed by normalizeSupabaseProduct)
     const payload: any = {
       name: pName,
       brand: pBrand,
@@ -370,9 +362,9 @@ try {
       mrp: Number(pMrp),
       unit: pUnit,
       description: pDescription,
-      isVeg: pIsVeg,
-      specialOffer: pSpecialOffer,
-      colorTheme: pColorTheme,
+      is_veg: pIsVeg,
+      special_offer: pSpecialOffer,
+      color_theme: pColorTheme,
     };
 
     if (pImageUrl) {
@@ -380,60 +372,31 @@ try {
     }
 
     try {
-      try {
-        const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
-        const method = editingProduct ? 'PUT' : 'POST';
-
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const contentType = response.headers.get('content-type');
-        if (response.ok && contentType && contentType.includes('application/json')) {
-          await response.json();
-        } else {
-          throw new Error('Non-JSON response from save product');
-        }
-      } catch (backendErr) {
-        console.warn('[Backend Offline] Saving product locally:', backendErr);
-      }
-
-      // Seamless local product save/create fallback
-      const localProductsStr = localStorage.getItem('annapurna_local_products');
-      let localProducts = localProductsStr ? (JSON.parse(localProductsStr) as Product[]) : [...fallbackProducts];
-      
       if (editingProduct) {
-        const idx = localProducts.findIndex(p => p.id === editingProduct.id);
-        if (idx !== -1) {
-          localProducts[idx] = {
-            ...localProducts[idx],
-            ...payload,
-            id: editingProduct.id,
-            image: pImageUrl || localProducts[idx].image
-          };
-        }
+        const { error } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', editingProduct.id);
+        if (error) throw error;
       } else {
-        const newProd: Product = {
-          id: 'prod-' + Math.floor(Math.random() * 100000),
-          inStock: true,
-          image: pImageUrl || 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/zhakaas.jpeg',
-          ...payload,
-        };
-        localProducts.unshift(newProd);
+        payload.in_stock = true;
+        payload.rating = 4.5;
+        payload.reviews_count = 10;
+        if (!payload.image) {
+          payload.image = 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/zhakaas.jpeg';
+        }
+        const { error } = await supabase
+          .from('products')
+          .insert([payload]);
+        if (error) throw error;
       }
-      
-      localStorage.setItem('annapurna_local_products', JSON.stringify(localProducts));
 
       showSuccess(editingProduct ? 'Product edited successfully!' : 'Product added successfully!');
       setIsProductModalOpen(false);
       fetchDashboardData();
     } catch (err: any) {
-      setError(err.message);
+      console.error('Failed to save product to Supabase:', err);
+      setError(err.message || 'Failed to save product');
     }
   };
 
