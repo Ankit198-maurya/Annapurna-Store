@@ -14,6 +14,23 @@ interface OwnerDashboardProps {
 }
 
 export default function OwnerDashboard({ onLogout, token, onBackToStore }: OwnerDashboardProps) {
+  // Formats an order timestamp (ISO/UTC string) into IST for display
+  const formatOrderTimeIST = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }) + ' IST';
+    } catch {
+      return timestamp;
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'customers'>('orders');
   
   // State
@@ -611,7 +628,7 @@ try {
                                 <span className="font-black bg-neutral-100 text-neutral-800 px-2.5 py-1 rounded-lg">
                                   #{o.id}
                                 </span>
-                                <span className="text-neutral-400 font-bold">{o.timestamp}</span>
+                                <span className="text-neutral-400 font-bold">{formatOrderTimeIST(o.timestamp)}</span>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
                                   o.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                                   o.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
