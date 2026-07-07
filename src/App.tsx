@@ -45,6 +45,23 @@ import {
   Moon
 } from 'lucide-react';
 
+// Formats an order timestamp (ISO/UTC string) into IST for display
+function formatOrderTimeIST(timestamp: string) {
+  try {
+    return new Date(timestamp).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }) + ' IST';
+  } catch {
+    return timestamp;
+  }
+}
+
 export default function App() {
   // App States
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -1129,7 +1146,7 @@ export default function App() {
                              'Delivered'}
                           </span>
                         </div>
-                        <p className="text-[10px] text-neutral-400 font-bold mt-0.5">{order.timestamp}</p>
+                        <p className="text-[10px] text-neutral-400 font-bold mt-0.5">{formatOrderTimeIST(order.timestamp)}</p>
                       </div>
 
                       <div className="flex items-center gap-2">
