@@ -19,7 +19,7 @@ export interface DbSchema {
 }
 
 const dbPath = path.join(process.cwd(), 'db.json');
-
+console.log("Database path:", dbPath);
 // Ensure db.json exists and is initialized
 export function initDb() {
   try {

@@ -89,13 +89,17 @@ try {
         throw new Error('Failed to load orders');
     }
 
-    ordData = await response.json();
+    const apiData = await response.json();
+
+    console.log("Orders received from API:", apiData);
+
+    ordData = apiData;
 } catch (err) {
     console.error(err);
 }
       
       // Merge with localStorage orders
-      
+      const savedOrdersStr = localStorage.getItem('grocery_orders');
       if (savedOrdersStr) {
         try {
           const savedOrders = JSON.parse(savedOrdersStr) as Order[];

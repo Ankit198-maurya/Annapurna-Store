@@ -412,6 +412,10 @@ app.post('/api/orders', authenticateToken as any, (req: AuthRequest, res: Respon
 // FETCH orders
 app.get('/api/orders', authenticateToken as any, (req: AuthRequest, res: Response) => {
   try {
+    console.log("========== /api/orders ==========");
+console.log("User:", req.user);
+console.log("Role:", req.user?.role);
+console.log("================================");
     const allOrders = getOrders();
     if (!req.user) {
       return res.json([]); // Anonymous has no saved order history in database
