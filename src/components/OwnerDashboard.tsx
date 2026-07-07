@@ -222,7 +222,7 @@ try {
     try {
       const { error } = await supabase
         .from('products')
-        .update({ in_stock: !product.inStock })
+        .update({ inStock: !product.inStock })
         .eq('id', product.id);
 
       if (error) throw error;
@@ -353,7 +353,8 @@ try {
       return;
     }
 
-    // Supabase table uses snake_case columns (confirmed by normalizeSupabaseProduct)
+    // This products table uses camelCase columns (confirmed from Table Editor),
+    // unlike the orders table which uses snake_case/Name.
     const payload: any = {
       name: pName,
       brand: pBrand,
@@ -362,9 +363,9 @@ try {
       mrp: Number(pMrp),
       unit: pUnit,
       description: pDescription,
-      is_veg: pIsVeg,
-      special_offer: pSpecialOffer,
-      color_theme: pColorTheme,
+      isVeg: pIsVeg,
+      specialOffer: pSpecialOffer,
+      colorTheme: pColorTheme,
     };
 
     if (pImageUrl) {
@@ -379,9 +380,10 @@ try {
           .eq('id', editingProduct.id);
         if (error) throw error;
       } else {
-        payload.in_stock = true;
+        payload.id = pName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.floor(Math.random() * 10000);
+        payload.inStock = true;
         payload.rating = 4.5;
-        payload.reviews_count = 10;
+        payload.reviewsCount = 10;
         if (!payload.image) {
           payload.image = 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/zhakaas.jpeg';
         }
