@@ -69,7 +69,9 @@ export function normalizeSupabaseOrder(dbOrder: any): Order {
   }));
 
   return {
-    id: dbOrder.id,
+    // This table's identifier column is called "Name" (not "id") and holds
+    // values like "ord-44714" - map it straight to Order.id.
+    id: dbOrder.Name || dbOrder.id,
     items: normalizedItems,
     totalAmount: dbOrder.total_amount !== undefined ? Number(dbOrder.total_amount) : (dbOrder.totalAmount || 0),
     deliveryAddress: {
@@ -88,7 +90,11 @@ export function normalizeSupabaseOrder(dbOrder: any): Order {
     paymentMethod: dbOrder.payment_method || dbOrder.paymentMethod || 'cod',
     status: dbOrder.status || 'pending',
     timestamp: dbOrder.created_at || dbOrder.timestamp || new Date().toISOString(),
-    eta: dbOrder.eta !== undefined ? Number(dbOrder.eta) : 10,
+    // There's no "eta" column in the orders table - derive a sensible default
+    // from status instead of reading a column that doesn't exist.
+    eta: dbOrder.eta !== undefined
+      ? Number(dbOrder.eta)
+      : (dbOrder.status === 'delivered' ? 0 : dbOrder.status === 'dispatched' ? 4 : dbOrder.status === 'preparing' ? 8 : 10),
   };
 }
 
@@ -100,9 +106,11 @@ export async function saveOrderToSupabase(order: Order, userId?: string | null) 
   try {
     console.log(`[Supabase] Initiating sync for Order ${order.id}...`);
 
-    // Build the payload
+    // Build the payload - matches the actual orders table columns:
+    // created_at, total_amount, payment_method, status, delivery_address,
+    // items, user_id, Name (this table has no "id" or "eta" column).
     const orderPayload = {
-      id: order.id,
+      Name: order.id,
       total_amount: order.totalAmount,
       payment_method: order.paymentMethod,
       status: order.status,
@@ -110,7 +118,6 @@ export async function saveOrderToSupabase(order: Order, userId?: string | null) 
       items: order.items,                     // Saved as JSONB/JSON or TEXT
       created_at: new Date().toISOString(),
       user_id: userId || null,
-      eta: order.eta
     };
 
     const { data, error } = await supabase
