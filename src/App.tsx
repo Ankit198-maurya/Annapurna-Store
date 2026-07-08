@@ -1315,7 +1315,7 @@ export default function App() {
               <div className="w-full md:w-1/2 bg-neutral-50 rounded-2xl border border-neutral-100 p-4 flex flex-col justify-center items-center min-h-[220px]">
                 <div className="w-full aspect-square max-w-[200px] rounded-2xl overflow-hidden shadow-inner border border-neutral-200 relative bg-white">
                   <img
-                    src={getBackgroundImageUrl(quickViewProduct.id)}
+                    src={quickViewProduct.image || getBackgroundImageUrl(quickViewProduct.id)}
                     alt={quickViewProduct.name}
                     className="w-full h-full object-cover opacity-100 transition-all duration-300"
                     referrerPolicy="no-referrer"
