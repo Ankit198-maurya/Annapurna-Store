@@ -27,6 +27,8 @@ import {
   Wheat,
   Droplet,
   Sparkles,
+  Wind,
+  Package,
   LayoutGrid,
   Filter,
   X,
@@ -621,6 +623,10 @@ export default function App() {
         return <Droplet className="w-5 h-5" />;
       case 'Sparkles':
         return <Sparkles className="w-5 h-5" />;
+      case 'Wind':
+        return <Wind className="w-5 h-5" />;
+      case 'Package':
+        return <Package className="w-5 h-5" />;
       case 'LayoutGrid':
       default:
         return <LayoutGrid className="w-5 h-5" />;
