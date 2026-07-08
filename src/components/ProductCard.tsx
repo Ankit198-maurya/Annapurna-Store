@@ -182,7 +182,7 @@ export default function ProductCard({
         className="w-full h-44 rounded-t-2xl flex justify-center items-center border-b border-neutral-100 dark:border-neutral-800 cursor-pointer relative group overflow-hidden bg-white dark:bg-neutral-950"
       >
         <img
-          src={getBackgroundImageUrl(product.id)}
+          src={product.image || getBackgroundImageUrl(product.id)}
           alt={product.name}
           className="w-full h-full object-cover opacity-100 group-hover:scale-105 transition-transform duration-500"
           referrerPolicy="no-referrer"
