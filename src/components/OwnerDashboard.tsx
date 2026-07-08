@@ -50,7 +50,7 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
   // Product Form State
   const [pName, setPName] = useState('');
   const [pBrand, setPBrand] = useState('');
-  const [pCategory, setPCategory] = useState('essential-grains');
+  const [pCategory, setPCategory] = useState('biscuits-cookies');
   const [pPrice, setPPrice] = useState('');
   const [pMrp, setPMrp] = useState('');
   const [pUnit, setPUnit] = useState('');
@@ -1006,11 +1006,14 @@ try {
                       onChange={(e) => setPCategory(e.target.value)}
                       className="w-full bg-neutral-50 border border-neutral-200 text-neutral-850 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                     >
-                      <option value="oils-ghee">🧴 Oils & Ghee</option>
-                      <option value="essential-grains">🌾 Essential Grains (Rice/Flour)</option>
-                      <option value="spices-masalas">🌶️ Spices & Masalas</option>
-                      <option value="snacks-beverages">🍪 Snacks & Beverages</option>
-                      <option value="household-care">🧼 Household Care & Soap</option>
+                      <option value="biscuits-cookies">🍪 Biscuits & Cookies</option>
+                      <option value="snacks-instant">🔥 Snacks & Instant Foods</option>
+                      <option value="papads-savouries">🫓 Papads & Savouries</option>
+                      <option value="staples-essentials">🌾 Staples & Spices</option>
+                      <option value="oils-ghee">🧴 Cooking Oils & Ghee</option>
+                      <option value="household-care">🧼 Household & Cleaning</option>
+                      <option value="agarbatti-dhoop">🪔 Agarbatti & Dhoop</option>
+                      <option value="others">📦 Others</option>
                     </select>
                   </div>
                 </div>
