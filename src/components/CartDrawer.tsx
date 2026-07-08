@@ -692,17 +692,18 @@ export default function CartDrawer({
                                 setLatitude(pos.coords.latitude.toFixed(6));
                                 setLongitude(pos.coords.longitude.toFixed(6));
                                 setIsLocating(false);
+                                setLocatingError(null);
                               },
                               (err) => {
-                                console.warn('Geolocation failed or blocked. Simulating coordinates.', err);
-                                // Varanasi mock coordinates: lat ~ 25.3176, lng ~ 82.9739
-                                const mockLat = (25.3176 + (Math.random() - 0.5) * 0.05).toFixed(6);
-                                const mockLng = (82.9739 + (Math.random() - 0.5) * 0.05).toFixed(6);
-                                setLatitude(mockLat);
-                                setLongitude(mockLng);
+                                console.warn('Geolocation failed or was blocked by the browser.', err);
                                 setIsLocating(false);
-                                setLocatingError('Note: Permission blocked in iframe. Shared local coordinates!');
-                                setTimeout(() => setLocatingError(null), 4000);
+                                setLatitude('');
+                                setLongitude('');
+                                setLocatingError(
+                                  err.code === 1
+                                    ? 'Location permission denied. Please fill in your address manually below.'
+                                    : 'Could not detect your location. Please fill in your address manually below.'
+                                );
                               },
                               { enableHighAccuracy: true, timeout: 5000 }
                             );
