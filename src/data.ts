@@ -50,6 +50,20 @@ export const categories: Category[] = [
     description: 'Premium washing powders, soap bars, and personal care',
     color: 'from-blue-500 to-blue-600',
   },
+  {
+    id: 'agarbatti-dhoop',
+    name: 'Agarbatti & Dhoop',
+    iconName: 'Wind',
+    description: 'Fragrant incense sticks, dhoop cones, and pooja essentials',
+    color: 'from-purple-500 to-purple-600',
+  },
+  {
+    id: 'others',
+    name: 'Others',
+    iconName: 'Package',
+    description: 'Everything else that does not fit our regular categories',
+    color: 'from-neutral-500 to-neutral-600',
+  },
 ];
 
 export const products: Product[] = [
