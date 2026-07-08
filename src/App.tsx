@@ -7,6 +7,7 @@ import CartDrawer from './components/CartDrawer';
 import OrderSimulator from './components/OrderSimulator';
 import RecipeSection from './components/RecipeSection';
 import AuthModal from './components/AuthModal';
+import WelcomeGate from './components/WelcomeGate';
 import OwnerDashboard from './components/OwnerDashboard';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, saveOrderToSupabase, normalizeSupabaseOrder } from './supabase';
@@ -102,6 +103,14 @@ export default function App() {
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+  const [showWelcomeGate, setShowWelcomeGate] = useState<boolean>(() => {
+    // Only show once per browser tab session, and only to guests who
+    // haven't already dismissed it or logged in during this session.
+    if (typeof window === 'undefined') return false;
+    const alreadySeen = sessionStorage.getItem('annapurna_welcome_seen');
+    const savedUser = localStorage.getItem('annapurna_user');
+    return !alreadySeen && !savedUser;
+  });
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   // Owner Login Forms
@@ -342,6 +351,13 @@ export default function App() {
     setToken(newToken);
     localStorage.setItem('annapurna_token', newToken);
     localStorage.setItem('annapurna_user', JSON.stringify(user));
+    setShowWelcomeGate(false);
+    sessionStorage.setItem('annapurna_welcome_seen', 'true');
+  };
+
+  const handleContinueAsGuest = () => {
+    setShowWelcomeGate(false);
+    sessionStorage.setItem('annapurna_welcome_seen', 'true');
   };
 
   const handleLogout = () => {
@@ -1455,6 +1471,20 @@ export default function App() {
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
         initialMode={authModalMode}
+      />
+
+      {/* 7.6 FIRST-VISIT WELCOME / LOGIN GATE */}
+      <WelcomeGate
+        isVisible={showWelcomeGate && !isAuthModalOpen}
+        onLogin={() => {
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
+        }}
+        onSignup={() => {
+          setAuthModalMode('signup');
+          setIsAuthModalOpen(true);
+        }}
+        onContinueAsGuest={handleContinueAsGuest}
       />
 
       {/* 8. EXPRESS DELIVERY ORDER SIMULATOR MODAL */}
