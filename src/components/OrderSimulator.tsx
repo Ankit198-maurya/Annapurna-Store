@@ -30,7 +30,8 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const updatedOrder: Order = await response.json();
-            setCurrentOrder(updatedOrder);
+            // Never let a stale server read downgrade a cancellation the customer just made
+            setCurrentOrder((prev) => (prev?.status === 'cancelled' ? prev : updatedOrder));
           }
         }
       } catch (err) {
@@ -45,6 +46,10 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
     const simulateStep = () => {
       setCurrentOrder((prev) => {
         if (!prev) return null;
+        if (prev.status === 'cancelled') {
+          return prev;
+        }
+
         let nextStatus: Order['status'] = prev.status;
         if (prev.status === 'pending') {
           nextStatus = 'preparing';
@@ -94,10 +99,13 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
 
   if (!currentOrder) return null;
 
+  const isCancelled = currentOrder.status === 'cancelled';
+
   const step = currentOrder.status === 'pending' ? 0
              : currentOrder.status === 'preparing' ? 1
              : currentOrder.status === 'dispatched' ? 2
-             : 3;
+             : currentOrder.status === 'delivered' ? 3
+             : 0;
 
 
   const stepsList = [
@@ -115,10 +123,18 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
           <div>
             <div className="flex justify-between items-center mb-6">
               <div>
-                <span className="text-[10px] font-black tracking-wider uppercase bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
-                  LIVE SIMULATION ACTIVE
-                </span>
-                <h2 className="font-extrabold text-xl text-neutral-800 mt-2">Delivery Partner GPS Status</h2>
+                {isCancelled ? (
+                  <span className="text-[10px] font-black tracking-wider uppercase bg-red-100 text-red-800 px-2.5 py-1 rounded-full">
+                    ORDER CANCELLED
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-black tracking-wider uppercase bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
+                    LIVE SIMULATION ACTIVE
+                  </span>
+                )}
+                <h2 className="font-extrabold text-xl text-neutral-800 mt-2">
+                  {isCancelled ? 'This order was cancelled' : 'Delivery Partner GPS Status'}
+                </h2>
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-neutral-400 font-bold uppercase">Order ID</p>
@@ -126,77 +142,88 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
               </div>
             </div>
 
-            {/* Simulated Live status map card visual */}
-            <div className="relative bg-emerald-800 rounded-2xl h-44 mb-6 overflow-hidden flex flex-col justify-between p-4 shadow-inner text-white">
-              {/* Fake road paths background */}
-              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_30%,transparent_10px,white_11px)] bg-[length:24px_24px]" />
-              <div className="absolute top-1/4 left-0 right-0 h-1 bg-white/20" />
-              <div className="absolute bottom-1/4 left-0 right-0 h-1 bg-white/20" />
-              <div className="absolute left-1/3 top-0 bottom-0 w-1 bg-white/20" />
-
-              <div className="flex justify-between items-start z-10">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex justify-center items-center text-lg animate-bounce">
-                    📦
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-emerald-200">Current Status</p>
-                    <p className="text-xs font-black">{stepsList[step].desc}</p>
-                  </div>
-                </div>
+            {isCancelled ? (
+              /* Cancelled state - replaces the live tracking map/stepper */
+              <div className="relative bg-red-800 rounded-2xl h-44 mb-6 overflow-hidden flex flex-col items-center justify-center p-4 shadow-inner text-white text-center gap-2">
+                <div className="text-3xl">🚫</div>
+                <p className="text-sm font-black">This order has been cancelled</p>
+                <p className="text-[11px] text-red-100 font-semibold">No delivery will take place for Order #{currentOrder.id.toUpperCase()}.</p>
               </div>
+            ) : (
+              <>
+                {/* Simulated Live status map card visual */}
+                <div className="relative bg-emerald-800 rounded-2xl h-44 mb-6 overflow-hidden flex flex-col justify-between p-4 shadow-inner text-white">
+                  {/* Fake road paths background */}
+                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_30%,transparent_10px,white_11px)] bg-[length:24px_24px]" />
+                  <div className="absolute top-1/4 left-0 right-0 h-1 bg-white/20" />
+                  <div className="absolute bottom-1/4 left-0 right-0 h-1 bg-white/20" />
+                  <div className="absolute left-1/3 top-0 bottom-0 w-1 bg-white/20" />
 
-              {/* Dynamic animation on map */}
-              <div className="relative h-12 w-full z-10 flex items-center">
-                {/* Delivery Boy Avatar slider */}
-                <motion.div
-                  animate={{
-                    x: step === 0 ? '0%' : step === 1 ? '30%' : step === 2 ? '70%' : '90%',
-                  }}
-                  transition={{ type: 'spring', stiffness: 50, damping: 12 }}
-                  className="absolute flex flex-col items-center"
-                >
-                  <div className="bg-white text-black text-xs font-black px-2 py-0.5 rounded shadow-lg border border-neutral-100 flex items-center gap-1">
-                    <span>🛵 Delivery Boy</span>
-                  </div>
-                  <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white shadow mt-1 animate-ping" />
-                </motion.div>
-
-                {/* Target Destination Pin */}
-                <div className="absolute right-2 flex flex-col items-center">
-                  <div className="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded shadow">
-                    🏡 YOUR HOME
-                  </div>
-                  <div className="w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow mt-1" />
-                </div>
-              </div>
-            </div>
-
-            {/* Stepper visual progress dots */}
-            <div className="grid grid-cols-4 gap-2 mb-6">
-              {stepsList.map((st, i) => {
-                const isActive = step >= i;
-                const isCurrent = step === i;
-                return (
-                  <div key={i} className="flex flex-col items-center text-center">
-                    <div
-                      className={`w-9 h-9 rounded-full flex justify-center items-center text-sm transition-all duration-300 ${
-                        isCurrent
-                          ? 'bg-emerald-700 text-white scale-110 shadow-lg ring-4 ring-emerald-100'
-                          : isActive
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-neutral-200 text-neutral-400'
-                      }`}
-                    >
-                      {isActive && !isCurrent ? '✓' : st.icon}
+                  <div className="flex justify-between items-start z-10">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex justify-center items-center text-lg animate-bounce">
+                        📦
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-emerald-200">Current Status</p>
+                        <p className="text-xs font-black">{stepsList[step].desc}</p>
+                      </div>
                     </div>
-                    <span className={`text-[10px] font-bold mt-2 ${isActive ? 'text-neutral-800' : 'text-neutral-400'}`}>
-                      {st.label}
-                    </span>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Dynamic animation on map */}
+                  <div className="relative h-12 w-full z-10 flex items-center">
+                    {/* Delivery Boy Avatar slider */}
+                    <motion.div
+                      animate={{
+                        x: step === 0 ? '0%' : step === 1 ? '30%' : step === 2 ? '70%' : '90%',
+                      }}
+                      transition={{ type: 'spring', stiffness: 50, damping: 12 }}
+                      className="absolute flex flex-col items-center"
+                    >
+                      <div className="bg-white text-black text-xs font-black px-2 py-0.5 rounded shadow-lg border border-neutral-100 flex items-center gap-1">
+                        <span>🛵 Delivery Boy</span>
+                      </div>
+                      <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white shadow mt-1 animate-ping" />
+                    </motion.div>
+
+                    {/* Target Destination Pin */}
+                    <div className="absolute right-2 flex flex-col items-center">
+                      <div className="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded shadow">
+                        🏡 YOUR HOME
+                      </div>
+                      <div className="w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow mt-1" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stepper visual progress dots */}
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                  {stepsList.map((st, i) => {
+                    const isActive = step >= i;
+                    const isCurrent = step === i;
+                    return (
+                      <div key={i} className="flex flex-col items-center text-center">
+                        <div
+                          className={`w-9 h-9 rounded-full flex justify-center items-center text-sm transition-all duration-300 ${
+                            isCurrent
+                              ? 'bg-emerald-700 text-white scale-110 shadow-lg ring-4 ring-emerald-100'
+                              : isActive
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-neutral-200 text-neutral-400'
+                          }`}
+                        >
+                          {isActive && !isCurrent ? '✓' : st.icon}
+                        </div>
+                        <span className={`text-[10px] font-bold mt-2 ${isActive ? 'text-neutral-800' : 'text-neutral-400'}`}>
+                          {st.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -278,7 +305,21 @@ export default function OrderSimulator({ order, onClose }: OrderSimulatorProps) 
 
           {/* Footer actions once delivery finishes */}
           <div className="mt-6 pt-4 border-t border-neutral-100 flex flex-col gap-3">
-            {step === 3 ? (
+            {isCancelled ? (
+              <>
+                <div className="bg-red-50 text-red-700 rounded-xl p-3 text-center text-[11px] font-bold border border-red-100">
+                  🚫 This order was cancelled and will not be delivered.
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full border-2 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 text-neutral-700 py-3 px-4 rounded-xl font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+                  id="back-to-home-from-simulator"
+                >
+                  <span>← Back to Home Page</span>
+                </button>
+              </>
+            ) : step === 3 ? (
               <motion.button
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
