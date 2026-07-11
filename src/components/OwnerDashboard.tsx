@@ -410,6 +410,7 @@ try {
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
   const preparingCount = orders.filter((o) => o.status === 'preparing').length;
   const dispatchedCount = orders.filter((o) => o.status === 'dispatched').length;
+  const cancelledCount = orders.filter((o) => o.status === 'cancelled').length;
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col font-sans">
@@ -451,7 +452,7 @@ try {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
         
         {/* Analytics Highlights */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white p-4 rounded-3xl border border-neutral-200/80 shadow-sm flex flex-col justify-between">
             <span className="text-[10px] text-neutral-400 font-bold uppercase">Delivered Revenue</span>
             <div className="flex items-baseline mt-2">
@@ -476,6 +477,15 @@ try {
               <span className="text-xs font-bold text-neutral-400 ml-1">orders</span>
             </div>
             <span className="text-[9px] text-blue-500 font-bold mt-1">🚚 In Kitchen / Route</span>
+          </div>
+
+          <div className="bg-white p-4 rounded-3xl border border-neutral-200/80 shadow-sm flex flex-col justify-between">
+            <span className="text-[10px] text-neutral-400 font-bold uppercase">Cancelled Orders</span>
+            <div className="flex items-baseline mt-2">
+              <span className="text-2xl font-black text-red-600 tracking-tight">{cancelledCount}</span>
+              <span className="text-xs font-bold text-neutral-400 ml-1">orders</span>
+            </div>
+            <span className="text-[9px] text-red-500 font-bold mt-1">🚫 Cancelled by Customer</span>
           </div>
 
           <div className="bg-white p-4 rounded-3xl border border-neutral-200/80 shadow-sm flex flex-col justify-between">
@@ -598,11 +608,13 @@ try {
                                   o.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                                   o.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
                                   o.status === 'dispatched' ? 'bg-indigo-100 text-indigo-800' :
+                                  o.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                   'bg-emerald-100 text-emerald-800'
                                 }`}>
                                   {o.status === 'pending' ? 'Order Placed' :
                                    o.status === 'preparing' ? 'Packing' :
                                    o.status === 'dispatched' ? 'On The Way' :
+                                   o.status === 'cancelled' ? 'Cancelled by Customer' :
                                    'Delivered'}
                                 </span>
                               </div>
@@ -674,53 +686,62 @@ try {
 
                               {/* Pipeline status controller */}
                               <div className="flex flex-col items-end gap-1.5 mt-2">
-                                <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Set Delivery Status:</span>
-                                <div className="flex flex-wrap gap-1 bg-neutral-100 p-1 rounded-xl">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateOrderStatus(o.id, 'pending')}
-                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
-                                      o.status === 'pending'
-                                        ? 'bg-amber-600 text-white shadow-xs'
-                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
-                                    }`}
-                                  >
-                                    Order Placed
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateOrderStatus(o.id, 'preparing')}
-                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
-                                      o.status === 'preparing'
-                                        ? 'bg-blue-600 text-white shadow-xs'
-                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
-                                    }`}
-                                  >
-                                    Packing
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateOrderStatus(o.id, 'dispatched')}
-                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
-                                      o.status === 'dispatched'
-                                        ? 'bg-indigo-600 text-white shadow-xs'
-                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
-                                    }`}
-                                  >
-                                    On The Way
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateOrderStatus(o.id, 'delivered')}
-                                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
-                                      o.status === 'delivered'
-                                        ? 'bg-emerald-600 text-white shadow-xs'
-                                        : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
-                                    }`}
-                                  >
-                                    Delivered
-                                  </button>
-                                </div>
+                                {o.status === 'cancelled' ? (
+                                  <div className="bg-red-50 border border-red-100 text-red-700 text-[10px] font-black uppercase px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                                    <span>🚫</span>
+                                    <span>Cancelled by Customer</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Set Delivery Status:</span>
+                                    <div className="flex flex-wrap gap-1 bg-neutral-100 p-1 rounded-xl">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateOrderStatus(o.id, 'pending')}
+                                        className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                          o.status === 'pending'
+                                            ? 'bg-amber-600 text-white shadow-xs'
+                                            : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                        }`}
+                                      >
+                                        Order Placed
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateOrderStatus(o.id, 'preparing')}
+                                        className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                          o.status === 'preparing'
+                                            ? 'bg-blue-600 text-white shadow-xs'
+                                            : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                        }`}
+                                      >
+                                        Packing
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateOrderStatus(o.id, 'dispatched')}
+                                        className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                          o.status === 'dispatched'
+                                            ? 'bg-indigo-600 text-white shadow-xs'
+                                            : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                        }`}
+                                      >
+                                        On The Way
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateOrderStatus(o.id, 'delivered')}
+                                        className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg transition-all ${
+                                          o.status === 'delivered'
+                                            ? 'bg-emerald-600 text-white shadow-xs'
+                                            : 'text-neutral-500 hover:text-neutral-850 hover:bg-neutral-200'
+                                        }`}
+                                      >
+                                        Delivered
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
