@@ -45,7 +45,8 @@ import {
   User,
   ShieldAlert,
   Sun,
-  Moon
+  Moon,
+  XCircle
 } from 'lucide-react';
 
 // Formats an order timestamp (ISO/UTC string) into IST for display
@@ -223,13 +224,13 @@ export default function App() {
   useEffect(() => {
     const pollPendingOrders = async () => {
       const currentOrders = ordersRef.current;
-      const pendingOrders = currentOrders.filter((o) => o.status !== 'delivered');
+      const pendingOrders = currentOrders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
       if (pendingOrders.length === 0) return;
 
       let hasChanges = false;
       const updatedOrders = await Promise.all(
         currentOrders.map(async (o) => {
-          if (o.status === 'delivered') return o;
+          if (o.status === 'delivered' || o.status === 'cancelled') return o;
           try {
             const { data, error } = await supabase
               .from('orders')
@@ -539,6 +540,62 @@ export default function App() {
       });
       return updated;
     });
+  };
+
+  // Customer-initiated order cancellation
+  const handleCancelOrder = async (orderId: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel Order #${orderId.toUpperCase()}? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      // Update the shared orders table so the Owner Portal sees the cancellation immediately
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('Name', orderId);
+
+      if (error) throw error;
+
+      // Best-effort: also sync the local server DB so the tracking modal doesn't
+      // later overwrite this with a stale status while polling.
+      try {
+        await fetch(`/api/orders/${orderId}/cancel`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
+        });
+      } catch (localSyncErr) {
+        console.warn('Local server cancel sync skipped:', localSyncErr);
+      }
+
+      // Reflect the change in local app state right away
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+      );
+
+      // Keep localStorage cache in sync too
+      const savedOrdersStr = localStorage.getItem('grocery_orders');
+      if (savedOrdersStr) {
+        const savedOrders = JSON.parse(savedOrdersStr) as Order[];
+        const idx = savedOrders.findIndex((o) => o.id === orderId);
+        if (idx !== -1) {
+          savedOrders[idx].status = 'cancelled';
+          localStorage.setItem('grocery_orders', JSON.stringify(savedOrders));
+        }
+      }
+
+      // Close the tracking modal if it's showing the order we just cancelled
+      setActiveOrder((prev) => (prev && prev.id === orderId ? { ...prev, status: 'cancelled' } : prev));
+
+      alert(`Order #${orderId.toUpperCase()} has been cancelled.`);
+    } catch (err: any) {
+      console.error('Failed to cancel order:', err);
+      alert('Sorry, we could not cancel your order right now. Please try again or contact the store.');
+    }
   };
 
   // Wishlist toggle
@@ -1160,11 +1217,13 @@ export default function App() {
                             order.status === 'pending' || !order.status ? 'bg-amber-100 text-amber-800' :
                             order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
                             order.status === 'dispatched' ? 'bg-indigo-100 text-indigo-800' :
+                            order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                             'bg-emerald-100 text-emerald-800'
                           }`}>
                             {order.status === 'pending' || !order.status ? 'Order Placed' :
                              order.status === 'preparing' ? 'Packing' :
                              order.status === 'dispatched' ? 'On The Way' :
+                             order.status === 'cancelled' ? 'Cancelled' :
                              'Delivered'}
                           </span>
                         </div>
@@ -1191,6 +1250,16 @@ export default function App() {
                         >
                           Reorder Items
                         </button>
+                        {/* Customer can only cancel while the order hasn't shipped or already been resolved */}
+                        {(order.status === 'pending' || order.status === 'preparing' || !order.status) && (
+                          <button
+                            onClick={() => handleCancelOrder(order.id)}
+                            className="bg-red-50 hover:bg-red-100 text-red-700 font-black text-[11px] px-3.5 py-1.5 rounded-lg border border-red-200 flex items-center gap-1 transition-colors"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Cancel Order</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
