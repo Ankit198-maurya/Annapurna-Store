@@ -39,7 +39,7 @@ export interface Order {
     longitude?: string;
   };
   paymentMethod: 'cod' | 'upi' | 'card';
-  status: 'pending' | 'preparing' | 'dispatched' | 'delivered';
+  status: 'pending' | 'preparing' | 'dispatched' | 'delivered' | 'cancelled';
   timestamp: string;
   eta: number; // minutes remaining
 }
