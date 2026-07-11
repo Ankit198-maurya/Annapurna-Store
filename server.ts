@@ -449,6 +449,38 @@ app.get('/api/orders/:id', (req: Request, res: Response) => {
   }
 });
 
+// CANCEL order (Customer - can only cancel their own order, and only while it hasn't shipped)
+app.put('/api/orders/:id/cancel', authenticateToken as any, requireAuth as any, (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const allOrders = getOrders();
+    const order: any = allOrders.find((o: any) => o.id === id);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    // Owners/admins may cancel any order; customers may only cancel their own
+    const isOwner = req.user?.role === 'owner' || req.user?.role === 'admin' || req.user?.id === 'owner';
+    if (!isOwner && order.userId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only cancel your own orders.' });
+    }
+
+    if (order.status === 'dispatched' || order.status === 'delivered') {
+      return res.status(400).json({ error: 'This order can no longer be cancelled as it is already out for delivery or delivered.' });
+    }
+
+    const updated = updateOrderStatus(id, 'cancelled');
+    if (!updated) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // UPDATE order status (Owner only)
 app.put('/api/orders/:id/status', authenticateToken as any, requireOwner as any, (req: AuthRequest, res: Response) => {
   try {
