@@ -179,7 +179,7 @@ export default function ProductCard({
       {/* Product Realistic Image Header */}
       <div
         onClick={() => onQuickView(product)}
-        className="w-full h-44 rounded-t-2xl flex justify-center items-center border-b border-neutral-100 dark:border-neutral-800 cursor-pointer relative group overflow-hidden bg-white dark:bg-neutral-950"
+        className="w-full h-28 sm:h-44 rounded-t-2xl flex justify-center items-center border-b border-neutral-100 dark:border-neutral-800 cursor-pointer relative group overflow-hidden bg-white dark:bg-neutral-950"
       >
         <img
           src={product.image || getBackgroundImageUrl(product.id)}
@@ -195,7 +195,7 @@ export default function ProductCard({
       </div>
 
       {/* Product Details Info Section */}
-      <div className="p-4 flex flex-col flex-grow justify-between">
+      <div className="p-2.5 sm:p-4 flex flex-col flex-grow justify-between">
         <div>
           {/* Brand & Category */}
           <div className="flex justify-between items-center text-[10px] font-bold text-neutral-400 dark:text-neutral-500 tracking-wider uppercase mb-1">
@@ -206,7 +206,7 @@ export default function ProductCard({
           {/* Product Title */}
           <h3
             onClick={() => onQuickView(product)}
-            className="font-bold text-sm text-neutral-800 dark:text-neutral-100 leading-snug tracking-tight hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer line-clamp-2 min-h-[2.5rem]"
+            className="font-bold text-xs sm:text-sm text-neutral-800 dark:text-neutral-100 leading-snug tracking-tight hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]"
           >
             {product.name}
           </h3>
@@ -226,9 +226,9 @@ export default function ProductCard({
           <div className="flex flex-col">
             <span className="text-xs text-neutral-400 dark:text-neutral-500 line-through font-medium">MRP ₹{product.mrp}</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-lg font-black text-neutral-900 dark:text-white">₹{product.price}</span>
+              <span className="text-base sm:text-lg font-black text-neutral-900 dark:text-white">₹{product.price}</span>
               {savings > 0 && (
-                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded">
+                <span className="hidden sm:inline text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded">
                   Save ₹{savings}
                 </span>
               )}
@@ -236,7 +236,7 @@ export default function ProductCard({
           </div>
 
           {/* Blinkit/Instamart styled Add Button Stepper */}
-          <div className="w-24 h-9 shrink-0 flex items-center justify-end">
+          <div className="w-16 sm:w-24 h-8 sm:h-9 shrink-0 flex items-center justify-end">
             <AnimatePresence mode="wait">
               {quantity === 0 ? (
                 <motion.button
