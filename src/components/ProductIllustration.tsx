@@ -2102,7 +2102,7 @@ export default function ProductIllustration({ product }: ProductIllustrationProp
 
             <div className="w-10 h-11 bg-white/20 border border-white/30 rounded-lg flex justify-center items-center shadow-lg shrink-0">
               <span className="text-[14px]">
-                {product.category === 'oils-ghee' ? '🧴' : product.category === 'household-care' ? '🧼' : '📦'}
+                {product.category === 'oil-and-ghee' ? '🧴' : product.category === 'clothes-wash-utensils' ? '🧼' : product.category === 'soap-skin-care' ? '🧼' : product.category === 'oral-care' ? '🪥' : product.category === 'puja-need' ? '🪔' : '📦'}
               </span>
             </div>
           </div>
