@@ -50,7 +50,7 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
   // Product Form State
   const [pName, setPName] = useState('');
   const [pBrand, setPBrand] = useState('');
-  const [pCategory, setPCategory] = useState('biscuits-cookies');
+  const [pCategory, setPCategory] = useState('others');
   const [pPrice, setPPrice] = useState('');
   const [pMrp, setPMrp] = useState('');
   const [pUnit, setPUnit] = useState('');
@@ -1027,13 +1027,17 @@ try {
                       onChange={(e) => setPCategory(e.target.value)}
                       className="w-full bg-neutral-50 border border-neutral-200 text-neutral-850 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                     >
-                      <option value="biscuits-cookies">🍪 Biscuits & Cookies</option>
-                      <option value="snacks-instant">🔥 Snacks & Instant Foods</option>
+                      <option value="oil-and-ghee">🧴 Oil and Ghee</option>
+                      <option value="dry-fruits">🥜 Dry fruits</option>
+                      <option value="pulses-and-cereals">🌾 Pulses and Cereals</option>
+                      <option value="rice-and-grains">🌾 Rice and other grains</option>
                       <option value="papads-savouries">🫓 Papads & Savouries</option>
-                      <option value="staples-essentials">🌾 Staples & Spices</option>
-                      <option value="oils-ghee">🧴 Cooking Oils & Ghee</option>
-                      <option value="household-care">🧼 Household & Cleaning</option>
-                      <option value="agarbatti-dhoop">🪔 Agarbatti & Dhoop</option>
+                      <option value="attas-and-flours">🌾 Attas and flours</option>
+                      <option value="sugar-salt-spices">🧂 Sugar, Salt and Spices</option>
+                      <option value="soap-skin-care">🧼 Soap and skin care</option>
+                      <option value="oral-care">🪥 Oral care</option>
+                      <option value="clothes-wash-utensils">🧼 Clothes wash and utensils cleaner</option>
+                      <option value="puja-need">🪔 Puja Need</option>
                       <option value="others">📦 Others</option>
                     </select>
                   </div>
