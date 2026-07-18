@@ -31,6 +31,10 @@ import {
   Wind,
   Package,
   LayoutGrid,
+  Nut,
+  Sprout,
+  Smile,
+  WashingMachine,
   Filter,
   X,
   Star,
@@ -700,6 +704,14 @@ export default function App() {
         return <Wind className="w-5 h-5" />;
       case 'Package':
         return <Package className="w-5 h-5" />;
+      case 'Nut':
+        return <Nut className="w-5 h-5" />;
+      case 'Sprout':
+        return <Sprout className="w-5 h-5" />;
+      case 'Smile':
+        return <Smile className="w-5 h-5" />;
+      case 'WashingMachine':
+        return <WashingMachine className="w-5 h-5" />;
       case 'LayoutGrid':
       default:
         return <LayoutGrid className="w-5 h-5" />;
