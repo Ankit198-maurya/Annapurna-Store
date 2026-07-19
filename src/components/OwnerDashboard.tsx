@@ -1038,6 +1038,7 @@ try {
                       <option value="oral-care">🪥 Oral care</option>
                       <option value="clothes-wash-utensils">🧼 Clothes wash and utensils cleaner</option>
                       <option value="puja-need">🪔 Puja Need</option>
+                      <option value="snacks-and-biscuits">🍪 Snacks and Biscuits</option>
                       <option value="others">📦 Others</option>
                     </select>
                   </div>
