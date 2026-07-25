@@ -1039,6 +1039,10 @@ try {
                       <option value="clothes-wash-utensils">🧼 Clothes wash and utensils cleaner</option>
                       <option value="puja-need">🪔 Puja Need</option>
                       <option value="snacks-and-biscuits">🍪 Snacks and Biscuits</option>
+                      <option value="dairy-and-bakery">🥛 Dairy and Bakery</option>
+                      <option value="health-and-pharmacy">💊 Health and Pharmacy</option>
+                      <option value="feminine-hygiene">🌸 Feminine Hygiene</option>
+                      <option value="stationary-and-books">📚 Stationary and Book</option>
                       <option value="others">📦 Others</option>
                     </select>
                   </div>
