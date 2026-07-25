@@ -415,7 +415,7 @@ export default function CartDrawer({
                       >
                         {/* Miniature Package Preview */}
                         <div className="w-16 h-16 bg-neutral-50 dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-850 rounded-lg flex-shrink-0 flex items-center justify-center p-1 text-[16px]">
-                          {item.product.id === 'good-day-cashew' ? '🍪' : item.product.id === 'oreo-choco' ? '🍩' : item.product.category === 'oil-and-ghee' ? '🧴' : item.product.category === 'clothes-wash-utensils' ? '🧼' : item.product.category === 'soap-skin-care' ? '🧼' : item.product.category === 'oral-care' ? '🪥' : item.product.category === 'puja-need' ? '🪔' : '📦'}
+                          {item.product.id === 'good-day-cashew' ? '🍪' : item.product.id === 'oreo-choco' ? '🍩' : item.product.category === 'oil-and-ghee' ? '🧴' : item.product.category === 'clothes-wash-utensils' ? '🧼' : item.product.category === 'soap-skin-care' ? '🧼' : item.product.category === 'oral-care' ? '🪥' : item.product.category === 'puja-need' ? '🪔' : item.product.category === 'dairy-and-bakery' ? '🥛' : item.product.category === 'health-and-pharmacy' ? '💊' : item.product.category === 'feminine-hygiene' ? '🌸' : item.product.category === 'stationary-and-books' ? '📚' : '📦'}
                         </div>
 
                         {/* Content */}
