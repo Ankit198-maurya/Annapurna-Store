@@ -35,6 +35,10 @@ import {
   Sprout,
   Smile,
   WashingMachine,
+  Milk,
+  Pill,
+  Flower2,
+  BookOpen,
   Filter,
   X,
   Star,
@@ -712,6 +716,14 @@ export default function App() {
         return <Smile className="w-5 h-5" />;
       case 'WashingMachine':
         return <WashingMachine className="w-5 h-5" />;
+      case 'Milk':
+        return <Milk className="w-5 h-5" />;
+      case 'Pill':
+        return <Pill className="w-5 h-5" />;
+      case 'Flower2':
+        return <Flower2 className="w-5 h-5" />;
+      case 'BookOpen':
+        return <BookOpen className="w-5 h-5" />;
       case 'LayoutGrid':
       default:
         return <LayoutGrid className="w-5 h-5" />;
