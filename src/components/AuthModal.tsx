@@ -65,15 +65,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
               user: matchedUser
             };
           } else if (email && password) {
-            // Default login bypass in development for convenience
+            // Fallback bypass when the backend is unreachable and no matching
+            // local account is found. Previously this attached a hardcoded
+            // placeholder phone number ('9876543210') and address to the
+            // account, which could silently end up on a real order if the
+            // checkout form wasn't manually corrected. Left blank instead so
+            // the customer is required to enter their own real number.
             data = {
               token: 'mock-customer-token-' + Date.now(),
               user: {
                 id: 'cust-' + Math.floor(Math.random() * 100000),
                 name: email.split('@')[0],
                 email,
-                phone: '9876543210',
-                address: '1 Kashipuram Colony',
+                phone: '',
+                address: '',
                 role: 'customer',
               }
             };
