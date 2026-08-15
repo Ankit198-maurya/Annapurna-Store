@@ -46,10 +46,21 @@ export default function CartDrawer({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
 
-  // Wrapper to save address to localStorage as default on successful order placement
+  // Wrapper to save address as default on successful order placement.
+  // IMPORTANT: this is scoped to the logged-in customer's own id/email, never
+  // to a single global browser-wide key. A global key meant that if two
+  // different people checked out on the same device (family member, shared
+  // shop tablet, etc.), the second person's order could silently inherit the
+  // first person's saved phone number - which is exactly what was causing
+  // wrong contact numbers to show up in the owner dashboard.
   const handleSaveAddressAndPlaceOrder = (address: any, method: string, discount: number) => {
     try {
-      localStorage.setItem('grocery_default_address', JSON.stringify(address));
+      if (currentUser && (currentUser.id || currentUser.email)) {
+        const key = `grocery_default_address_${currentUser.id || currentUser.email}`;
+        localStorage.setItem(key, JSON.stringify(address));
+      }
+      // For guest checkouts we deliberately do NOT persist to a shared/global
+      // key - each guest must always enter their own details fresh.
     } catch (e) {
       console.error('Failed to save default address:', e);
     }
@@ -89,32 +100,49 @@ export default function CartDrawer({
     ? POPULAR_CITIES.filter(c => c.toLowerCase().includes(city.toLowerCase()))
     : POPULAR_CITIES;
 
-  // Sync with currentUser or default saved address when drawer opens
+  // Sync with currentUser's own saved address when drawer opens.
+  // Deliberately scoped to the logged-in user's id/email - never a global,
+  // device-wide default - so a guest or a different logged-in customer on
+  // the same browser never sees someone else's phone number pre-filled.
   React.useEffect(() => {
     if (isOpen) {
-      try {
-        const saved = localStorage.getItem('grocery_default_address');
-        if (saved) {
-          const addr = JSON.parse(saved);
-          setName(addr.name || '');
-          setPhone(addr.phone || '');
-          setFlat(addr.flat || '');
-          setArea(addr.area || '');
-          setLandmark(addr.landmark || '');
-          setCity(addr.city || 'Varanasi');
-          setPincode(addr.pincode || '');
-          setLatitude(addr.latitude || '');
-          setLongitude(addr.longitude || '');
-          return;
+      if (currentUser && (currentUser.id || currentUser.email)) {
+        try {
+          const key = `grocery_default_address_${currentUser.id || currentUser.email}`;
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const addr = JSON.parse(saved);
+            setName(addr.name || currentUser.name || '');
+            setPhone(addr.phone || currentUser.phone || '');
+            setFlat(addr.flat || currentUser.address || '');
+            setArea(addr.area || '');
+            setLandmark(addr.landmark || '');
+            setCity(addr.city || 'Varanasi');
+            setPincode(addr.pincode || '');
+            setLatitude(addr.latitude || '');
+            setLongitude(addr.longitude || '');
+            return;
+          }
+        } catch (e) {
+          console.error('Error loading default saved address:', e);
         }
-      } catch (e) {
-        console.error('Error loading default saved address:', e);
-      }
 
-      if (currentUser) {
         setName(currentUser.name || '');
         setPhone(currentUser.phone || '');
         setFlat(currentUser.address || '');
+      } else {
+        // Guest checkout: always start blank so the person filling the form
+        // right now enters their own real phone number, instead of
+        // inheriting whatever was last saved on this device.
+        setName('');
+        setPhone('');
+        setFlat('');
+        setArea('');
+        setLandmark('');
+        setCity('Varanasi');
+        setPincode('');
+        setLatitude('');
+        setLongitude('');
       }
     }
   }, [isOpen, currentUser]);
