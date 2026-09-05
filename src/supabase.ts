@@ -20,6 +20,19 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
  */
 export function normalizeSupabaseProduct(dbProduct: any): Product {
   if (!dbProduct) return dbProduct;
+
+  // The "variants" column holds size/pack choices (e.g. Ghee 250gm vs 500gm)
+  // as JSONB. Supabase's client usually gives this back as a parsed array
+  // already, but handle a raw JSON string too just in case.
+  let variants = dbProduct.variants;
+  if (typeof variants === 'string') {
+    try {
+      variants = JSON.parse(variants);
+    } catch (e) {
+      variants = undefined;
+    }
+  }
+
   return {
     id: dbProduct.id,
     name: dbProduct.name,
@@ -36,6 +49,7 @@ export function normalizeSupabaseProduct(dbProduct: any): Product {
     reviewsCount: dbProduct.reviews_count !== undefined ? Number(dbProduct.reviews_count) : (dbProduct.reviewsCount !== undefined ? dbProduct.reviewsCount : 10),
     inStock: dbProduct.in_stock !== undefined ? dbProduct.in_stock : (dbProduct.inStock !== undefined ? dbProduct.inStock : true),
     image: dbProduct.image || '',
+    variants: Array.isArray(variants) && variants.length > 0 ? variants : undefined,
   };
 }
 
