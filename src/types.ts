@@ -1,3 +1,14 @@
+// A selectable pack-size option for a product (e.g. "250 g" vs "500 g").
+// When a product has `variants`, the customer must pick one before adding to cart.
+export interface ProductVariant {
+  id: string; // short unique id within the product, e.g. '250g'
+  label: string; // shown on the size pill, e.g. '250 g'
+  unit: string; // shown as the product's unit once selected, e.g. '250g'
+  price: number;
+  mrp: number;
+  isDefault?: boolean; // pre-selected size when the card first renders
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -14,6 +25,7 @@ export interface Product {
   reviewsCount: number;
   inStock: boolean;
   image?: string;
+  variants?: ProductVariant[]; // optional pack-size choices (e.g. Ghee: 250gm / 500gm)
 }
 
 export interface CartItem {
