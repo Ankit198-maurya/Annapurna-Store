@@ -63,6 +63,37 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
   const [uploadingImage, setUploadingImage] = useState(false);
   const [productToDelete, setProductToDelete] = useState<{ id: string; name: string } | null>(null);
 
+  // Size / pack-weight choices (e.g. Ghee 250gm vs 500gm). Optional per product -
+  // leave this list empty for a normal single-size product.
+  type VariantFormRow = { key: string; label: string; unit: string; price: string; mrp: string; isDefault: boolean };
+  const [pVariants, setPVariants] = useState<VariantFormRow[]>([]);
+
+  const addVariantRow = () => {
+    setPVariants((prev) => [
+      ...prev,
+      { key: `v-${Date.now()}-${prev.length}`, label: '', unit: '', price: '', mrp: '', isDefault: prev.length === 0 },
+    ]);
+  };
+
+  const updateVariantRow = (key: string, field: keyof VariantFormRow, value: string | boolean) => {
+    setPVariants((prev) => prev.map((v) => (v.key === key ? { ...v, [field]: value } : v)));
+  };
+
+  const removeVariantRow = (key: string) => {
+    setPVariants((prev) => {
+      const filtered = prev.filter((v) => v.key !== key);
+      // Make sure exactly one row stays marked default, if any remain
+      if (filtered.length > 0 && !filtered.some((v) => v.isDefault)) {
+        filtered[0] = { ...filtered[0], isDefault: true };
+      }
+      return filtered;
+    });
+  };
+
+  const setDefaultVariant = (key: string) => {
+    setPVariants((prev) => prev.map((v) => ({ ...v, isDefault: v.key === key })));
+  };
+
   useEffect(() => {
     fetchDashboardData();
 
@@ -326,6 +357,7 @@ try {
     setPColorTheme('emerald');
     setPImageUrl('');
     setPImageFile(null);
+    setPVariants([]);
     setIsProductModalOpen(true);
   };
 
@@ -343,6 +375,16 @@ try {
     setPColorTheme(p.colorTheme || 'emerald');
     setPImageUrl(p.image || '');
     setPImageFile(null);
+    setPVariants(
+      (p.variants || []).map((v, idx) => ({
+        key: `existing-${v.id || idx}`,
+        label: v.label,
+        unit: v.unit,
+        price: String(v.price),
+        mrp: String(v.mrp),
+        isDefault: !!v.isDefault,
+      }))
+    );
     setIsProductModalOpen(true);
   };
 
@@ -351,6 +393,27 @@ try {
     if (!pName || !pBrand || !pPrice || !pMrp || !pUnit) {
       setError('Please fill in all mandatory fields');
       return;
+    }
+
+    // Only keep size-choice rows the owner actually filled in; a half-empty
+    // row (e.g. label typed but no price yet) is silently dropped rather than
+    // blocking the whole save.
+    const filledVariantRows = pVariants.filter((v) => v.label.trim() && v.unit.trim() && v.price !== '' && v.mrp !== '');
+    if (filledVariantRows.some((v) => Number(v.price) <= 0 || Number(v.mrp) <= 0)) {
+      setError('Each size choice needs a valid price and MRP greater than 0');
+      return;
+    }
+    const variantsPayload = filledVariantRows.map((v, idx) => ({
+      id: v.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `size-${idx}`,
+      label: v.label.trim(),
+      unit: v.unit.trim(),
+      price: Number(v.price),
+      mrp: Number(v.mrp),
+      isDefault: v.isDefault,
+    }));
+    // Make sure exactly one variant is marked default (falls back to the first one)
+    if (variantsPayload.length > 0 && !variantsPayload.some((v) => v.isDefault)) {
+      variantsPayload[0].isDefault = true;
     }
 
     // This products table uses camelCase columns (confirmed from Table Editor),
@@ -366,6 +429,9 @@ try {
       isVeg: pIsVeg,
       specialOffer: pSpecialOffer,
       colorTheme: pColorTheme,
+      // Stored as JSONB. Sent as null (rather than []) when there are no size
+      // choices, so products without variants keep working exactly as before.
+      variants: variantsPayload.length > 0 ? variantsPayload : null,
     };
 
     if (pImageUrl) {
@@ -788,7 +854,14 @@ try {
                                     </div>
                                   )}
                                   <div>
-                                    <p className="font-extrabold text-neutral-800">{p.name}</p>
+                                    <p className="font-extrabold text-neutral-800 flex items-center gap-1.5">
+                                      <span>{p.name}</span>
+                                      {p.variants && p.variants.length > 0 && (
+                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                                          {p.variants.length} sizes
+                                        </span>
+                                      )}
+                                    </p>
                                     <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">{p.brand} ({p.unit})</p>
                                   </div>
                                 </div>
@@ -1058,6 +1131,87 @@ try {
                     onChange={(e) => setPDescription(e.target.value)}
                     className="w-full bg-neutral-50 border border-neutral-200 text-neutral-850 text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
                   />
+                </div>
+
+                {/* Size / Pack-weight choices (optional - e.g. Ghee 250gm vs 500gm) */}
+                <div className="bg-neutral-50 p-4 rounded-2xl border border-dashed border-neutral-300 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-500 uppercase">Size / Pack Choices (optional)</label>
+                      <p className="text-[10px] text-neutral-400 font-semibold mt-0.5">
+                        Let customers pick a pack size (e.g. 250gm / 500gm). Leave empty for a normal single-size product.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addVariantRow}
+                      className="inline-flex items-center gap-1 bg-white border border-neutral-300 hover:bg-neutral-100 text-neutral-700 text-[10px] font-extrabold px-2.5 py-1.5 rounded-lg shadow-sm transition-all uppercase tracking-wide shrink-0"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add Size
+                    </button>
+                  </div>
+
+                  {pVariants.length > 0 && (
+                    <div className="space-y-2">
+                      {pVariants.map((v) => (
+                        <div key={v.key} className="bg-white border border-neutral-200 rounded-xl p-2.5 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              placeholder="Label (e.g. 250 gm)"
+                              value={v.label}
+                              onChange={(e) => updateVariantRow(v.key, 'label', e.target.value)}
+                              className="w-full bg-neutral-50 border border-neutral-200 text-neutral-850 text-[11px] font-semibold rounded-lg px-2.5 py-2 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Unit shown (e.g. 250gm)"
+                              value={v.unit}
+                              onChange={(e) => updateVariantRow(v.key, 'unit', e.target.value)}
+                              className="w-full bg-neutral-50 border border-neutral-200 text-neutral-850 text-[11px] font-semibold rounded-lg px-2.5 py-2 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="number"
+                              placeholder="Price (₹)"
+                              value={v.price}
+                              onChange={(e) => updateVariantRow(v.key, 'price', e.target.value)}
+                              className="w-full bg-neutral-50 border border-neutral-200 text-neutral-850 text-[11px] font-semibold rounded-lg px-2.5 py-2 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                            />
+                            <input
+                              type="number"
+                              placeholder="MRP (₹)"
+                              value={v.mrp}
+                              onChange={(e) => updateVariantRow(v.key, 'mrp', e.target.value)}
+                              className="w-full bg-neutral-50 border border-neutral-200 text-neutral-850 text-[11px] font-semibold rounded-lg px-2.5 py-2 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between pt-0.5">
+                            <label className="inline-flex items-center gap-1.5 text-[10px] font-bold text-neutral-500 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="defaultVariant"
+                                checked={v.isDefault}
+                                onChange={() => setDefaultVariant(v.key)}
+                                className="w-3.5 h-3.5 text-emerald-600 focus:ring-emerald-500 border-neutral-300"
+                              />
+                              Pre-selected by default
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => removeVariantRow(v.key)}
+                              className="text-rose-500 hover:text-rose-700 p-1"
+                              title="Remove this size choice"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Veg Flag and Offer */}
