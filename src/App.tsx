@@ -166,6 +166,7 @@ export default function App() {
   // UI Flow States
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [quickViewVariantId, setQuickViewVariantId] = useState<string>('');
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'shop' | 'wishlist' | 'orders'>('shop');
 
@@ -501,7 +502,10 @@ export default function App() {
   }, [productsList, selectedCategory, selectedBrand, searchQuery, onlyInStock, sortBy]);
 
   // Cart operations
-  const handleUpdateCart = (productId: string, quantity: number) => {
+  // `productOverride` is used when adding a size-variant cart line (e.g. Ghee 250gm),
+  // whose id (`baseId::variantId`) doesn't exist in `productsList` directly - the
+  // caller resolves the variant into a full Product object and passes it in.
+  const handleUpdateCart = (productId: string, quantity: number, productOverride?: Product) => {
     setCart((prev) => {
       const existingIndex = prev.findIndex((item) => item.product.id === productId);
 
@@ -510,12 +514,12 @@ export default function App() {
         return prev.filter((item) => item.product.id !== productId);
       }
 
-      const product = productsList.find((p) => p.id === productId);
+      const product = productOverride || productsList.find((p) => p.id === productId);
       if (!product) return prev;
 
       if (existingIndex >= 0) {
         const updated = [...prev];
-        updated[existingIndex] = { ...updated[existingIndex], quantity };
+        updated[existingIndex] = { ...updated[existingIndex], quantity, product: productOverride || updated[existingIndex].product };
         return updated;
       } else {
         return [...prev, { product, quantity }];
@@ -620,6 +624,35 @@ export default function App() {
   // Quick View triggers
   const handleQuickView = (product: Product) => {
     setQuickViewProduct(product);
+    if (product.variants && product.variants.length > 0) {
+      const def = product.variants.find((v) => v.isDefault) || product.variants[0];
+      setQuickViewVariantId(def.id);
+    } else {
+      setQuickViewVariantId('');
+    }
+  };
+
+  // Resolve the currently selected quick-view variant (if any) into effective
+  // price/unit/cart-id values, mirroring the logic used inside ProductCard.
+  const quickViewSelectedVariant = quickViewProduct?.variants?.find((v) => v.id === quickViewVariantId);
+  const quickViewCartId = quickViewProduct
+    ? quickViewSelectedVariant
+      ? `${quickViewProduct.id}::${quickViewSelectedVariant.id}`
+      : quickViewProduct.id
+    : '';
+  const quickViewEffectivePrice = quickViewSelectedVariant ? quickViewSelectedVariant.price : quickViewProduct?.price ?? 0;
+  const quickViewEffectiveMrp = quickViewSelectedVariant ? quickViewSelectedVariant.mrp : quickViewProduct?.mrp ?? 0;
+  const quickViewEffectiveUnit = quickViewSelectedVariant ? quickViewSelectedVariant.unit : quickViewProduct?.unit ?? '';
+  const buildQuickViewCartProduct = (): Product | undefined => {
+    if (!quickViewProduct) return undefined;
+    if (!quickViewSelectedVariant) return quickViewProduct;
+    return {
+      ...quickViewProduct,
+      id: quickViewCartId,
+      price: quickViewSelectedVariant.price,
+      mrp: quickViewSelectedVariant.mrp,
+      unit: quickViewSelectedVariant.unit,
+    };
   };
 
   // Handle active checkout order placement
@@ -1140,7 +1173,7 @@ export default function App() {
                   <ProductCard
                     key={product.id}
                     product={product}
-                    quantity={cart.find((item) => item.product.id === product.id)?.quantity || 0}
+                    cartItems={cart}
                     isWishlisted={wishlist.includes(product.id)}
                     onUpdateCart={handleUpdateCart}
                     onToggleWishlist={handleToggleWishlist}
@@ -1190,7 +1223,7 @@ export default function App() {
                     <ProductCard
                       key={product.id}
                       product={product}
-                      quantity={cart.find((item) => item.product.id === product.id)?.quantity || 0}
+                      cartItems={cart}
                       isWishlisted={true}
                       onUpdateCart={handleUpdateCart}
                       onToggleWishlist={handleToggleWishlist}
@@ -1452,7 +1485,7 @@ export default function App() {
                   <div className="flex items-center gap-2 mb-2 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                     <span>{quickViewProduct.brand}</span>
                     <span>•</span>
-                    <span>{quickViewProduct.unit}</span>
+                    <span>{quickViewEffectiveUnit}</span>
                   </div>
 
                   <h2 className="text-xl font-black text-neutral-900 tracking-tight leading-tight mb-2">
@@ -1479,11 +1512,32 @@ export default function App() {
                     {quickViewProduct.description}
                   </p>
 
+                  {/* Size / pack-weight choice pills - only shown for products with variants */}
+                  {quickViewProduct.variants && quickViewProduct.variants.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4" id={`quickview-variant-selector-${quickViewProduct.id}`}>
+                      {quickViewProduct.variants.map((variant) => (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => setQuickViewVariantId(variant.id)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${
+                            quickViewVariantId === variant.id
+                              ? 'bg-emerald-700 text-white border-transparent'
+                              : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                          }`}
+                          id={`quickview-variant-${quickViewProduct.id}-${variant.id}`}
+                        >
+                          {variant.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Pack specifications */}
                   <div className="grid grid-cols-2 gap-3 mt-4 text-[11px] text-neutral-600">
                     <div className="bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
                       <span className="block text-neutral-400 font-bold uppercase text-[8px]">Net Pack Weight</span>
-                      <span className="font-extrabold text-neutral-800">{quickViewProduct.unit}</span>
+                      <span className="font-extrabold text-neutral-800">{quickViewEffectiveUnit}</span>
                     </div>
                     <div className="bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
                       <span className="block text-neutral-400 font-bold uppercase text-[8px]">In Stock Status</span>
@@ -1497,25 +1551,25 @@ export default function App() {
                 {/* Pricing row & add to basket trigger */}
                 <div className="pt-4 mt-4 border-t border-neutral-100 flex justify-between items-center">
                   <div className="text-left">
-                    <span className="text-xs text-neutral-400 line-through">MRP ₹{quickViewProduct.mrp}</span>
-                    <p className="text-2xl font-black text-neutral-900">₹{quickViewProduct.price}</p>
+                    <span className="text-xs text-neutral-400 line-through">MRP ₹{quickViewEffectiveMrp}</span>
+                    <p className="text-2xl font-black text-neutral-900">₹{quickViewEffectivePrice}</p>
                   </div>
 
                   <div className="flex gap-2">
                     {/* Add / stepper control */}
-                    {cart.find((ci) => ci.product.id === quickViewProduct.id) ? (
+                    {cart.find((ci) => ci.product.id === quickViewCartId) ? (
                       <div className="bg-emerald-700 text-white rounded-xl h-11 px-3 flex items-center justify-between gap-4 shadow-md">
                         <button
-                          onClick={() => handleUpdateCart(quickViewProduct.id, (cart.find((ci) => ci.product.id === quickViewProduct.id)?.quantity || 0) - 1)}
+                          onClick={() => handleUpdateCart(quickViewCartId, (cart.find((ci) => ci.product.id === quickViewCartId)?.quantity || 0) - 1)}
                           className="p-1 hover:bg-emerald-800 rounded"
                         >
                           <Minus className="w-4 h-4 stroke-[3]" />
                         </button>
                         <span className="font-extrabold text-sm select-none">
-                          {cart.find((ci) => ci.product.id === quickViewProduct.id)?.quantity}
+                          {cart.find((ci) => ci.product.id === quickViewCartId)?.quantity}
                         </span>
                         <button
-                          onClick={() => handleUpdateCart(quickViewProduct.id, (cart.find((ci) => ci.product.id === quickViewProduct.id)?.quantity || 0) + 1)}
+                          onClick={() => handleUpdateCart(quickViewCartId, (cart.find((ci) => ci.product.id === quickViewCartId)?.quantity || 0) + 1, buildQuickViewCartProduct())}
                           className="p-1 hover:bg-emerald-800 rounded"
                         >
                           <Plus className="w-4 h-4 stroke-[3]" />
@@ -1524,7 +1578,7 @@ export default function App() {
                     ) : (
                       <button
                         onClick={() => {
-                          handleUpdateCart(quickViewProduct.id, 1);
+                          handleUpdateCart(quickViewCartId, 1, buildQuickViewCartProduct());
                           setQuickViewProduct(null);
                         }}
                         disabled={!quickViewProduct.inStock}
