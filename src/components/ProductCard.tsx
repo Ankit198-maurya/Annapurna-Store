@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Product } from '../types';
+import { Product, CartItem } from '../types';
 import { Heart, Star, Plus, Minus, Check, ShoppingCart, Percent } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductIllustration, { getBackgroundImageUrl } from './ProductIllustration';
@@ -7,22 +7,53 @@ import ProductIllustration, { getBackgroundImageUrl } from './ProductIllustratio
 interface ProductCardProps {
   key?: string;
   product: Product;
-  quantity: number;
+  cartItems: CartItem[];
   isWishlisted: boolean;
-  onUpdateCart: (productId: string, quantity: number) => void;
+  onUpdateCart: (productId: string, quantity: number, productOverride?: Product) => void;
   onToggleWishlist: (productId: string) => void;
   onQuickView: (product: Product) => void;
 }
 
 export default function ProductCard({
   product,
-  quantity,
+  cartItems,
   isWishlisted,
   onUpdateCart,
   onToggleWishlist,
   onQuickView,
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+
+  // --- Size / pack-weight variant selection (e.g. Ghee 250gm vs 500gm) ---
+  const hasVariants = !!product.variants && product.variants.length > 0;
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(() => {
+    if (!product.variants || product.variants.length === 0) return '';
+    const def = product.variants.find((v) => v.isDefault) || product.variants[0];
+    return def.id;
+  });
+  const selectedVariant = hasVariants
+    ? product.variants!.find((v) => v.id === selectedVariantId) || product.variants![0]
+    : undefined;
+
+  // The cart line for a variant product is tracked under its own composite id,
+  // so different sizes of the same product can sit in the basket independently.
+  const cartId = selectedVariant ? `${product.id}::${selectedVariant.id}` : product.id;
+  const effectivePrice = selectedVariant ? selectedVariant.price : product.price;
+  const effectiveMrp = selectedVariant ? selectedVariant.mrp : product.mrp;
+  const effectiveUnit = selectedVariant ? selectedVariant.unit : product.unit;
+
+  const quantity = cartItems.find((item) => item.product.id === cartId)?.quantity || 0;
+
+  const buildCartProduct = (): Product => {
+    if (!selectedVariant) return product;
+    return {
+      ...product,
+      id: cartId,
+      price: selectedVariant.price,
+      mrp: selectedVariant.mrp,
+      unit: selectedVariant.unit,
+    };
+  };
 
   // Return tailwind bg color classes based on colorTheme
   const getThemeColors = (theme: string) => {
@@ -130,7 +161,7 @@ export default function ProductCard({
   );
 };
 
-  const savings = product.mrp - product.price;
+  const savings = effectiveMrp - effectivePrice;
 
   return (
     <motion.div
@@ -200,7 +231,7 @@ export default function ProductCard({
           {/* Brand & Category */}
           <div className="flex justify-between items-center text-[10px] font-bold text-neutral-400 dark:text-neutral-500 tracking-wider uppercase mb-1">
             <span>{product.brand}</span>
-            <span>{product.unit}</span>
+            <span>{effectiveUnit}</span>
           </div>
 
           {/* Product Title */}
@@ -221,12 +252,33 @@ export default function ProductCard({
           </div>
         </div>
 
+        {/* Size / pack-weight choice pills - only shown for products with variants */}
+        {hasVariants && (
+          <div className="flex flex-wrap gap-1.5 mt-2" id={`variant-selector-${product.id}`}>
+            {product.variants!.map((variant) => (
+              <button
+                key={variant.id}
+                type="button"
+                onClick={() => setSelectedVariantId(variant.id)}
+                className={`text-[10px] sm:text-[11px] font-bold px-2 py-1 rounded-lg border transition-colors ${
+                  selectedVariantId === variant.id
+                    ? `${theme.accent} text-white border-transparent`
+                    : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-neutral-400'
+                }`}
+                id={`variant-${product.id}-${variant.id}`}
+              >
+                {variant.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Price and Add to Cart Row */}
         <div className="mt-2 pt-2 border-t border-neutral-50 dark:border-neutral-800/80 flex items-end justify-between">
           <div className="flex flex-col">
-            <span className="text-xs text-neutral-400 dark:text-neutral-500 line-through font-medium">MRP ₹{product.mrp}</span>
+            <span className="text-xs text-neutral-400 dark:text-neutral-500 line-through font-medium">MRP ₹{effectiveMrp}</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-base sm:text-lg font-black text-neutral-900 dark:text-white">₹{product.price}</span>
+              <span className="text-base sm:text-lg font-black text-neutral-900 dark:text-white">₹{effectivePrice}</span>
               {savings > 0 && (
                 <span className="hidden sm:inline text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded">
                   Save ₹{savings}
@@ -244,7 +296,7 @@ export default function ProductCard({
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  onClick={() => onUpdateCart(product.id, 1)}
+                  onClick={() => onUpdateCart(cartId, 1, buildCartProduct())}
                   className="w-full h-full bg-white dark:bg-neutral-800 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-neutral-700 font-extrabold text-xs rounded-xl shadow-sm hover:bg-emerald-50 dark:hover:bg-neutral-700 hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors duration-200 flex justify-center items-center gap-1"
                   id={`add-to-cart-${product.id}`}
                 >
@@ -260,7 +312,7 @@ export default function ProductCard({
                   className="w-full h-full bg-emerald-700 text-white rounded-xl shadow-md flex items-center justify-between px-2"
                 >
                   <button
-                    onClick={() => onUpdateCart(product.id, quantity - 1)}
+                    onClick={() => onUpdateCart(cartId, quantity - 1)}
                     className="p-1 hover:bg-emerald-800 rounded transition-colors"
                     id={`decrement-${product.id}`}
                   >
@@ -268,7 +320,7 @@ export default function ProductCard({
                   </button>
                   <span className="font-extrabold text-sm select-none" id={`quantity-${product.id}`}>{quantity}</span>
                   <button
-                    onClick={() => onUpdateCart(product.id, quantity + 1)}
+                    onClick={() => onUpdateCart(cartId, quantity + 1, buildCartProduct())}
                     className="p-1 hover:bg-emerald-800 rounded transition-colors"
                     id={`increment-${product.id}`}
                   >
