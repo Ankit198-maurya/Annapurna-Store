@@ -344,6 +344,7 @@ try {
   };
 
   const openAddModal = () => {
+    setError(null);
     setEditingProduct(null);
     setPName('');
     setPBrand('');
@@ -362,6 +363,7 @@ try {
   };
 
   const openEditModal = (p: Product) => {
+    setError(null);
     setEditingProduct(p);
     setPName(p.name);
     setPBrand(p.brand);
@@ -1015,6 +1017,19 @@ try {
               <h2 className="text-md font-black uppercase text-neutral-900 tracking-tight mb-4">
                 {editingProduct ? `Edit: ${editingProduct.name}` : 'Add New Catalog Product'}
               </h2>
+
+              {error && (
+                <div className="bg-rose-50 text-rose-600 text-xs font-bold p-3 mb-4 rounded-2xl border border-rose-100 flex justify-between items-center gap-2">
+                  <span>{error}</span>
+                  <button
+                    type="button"
+                    onClick={() => setError(null)}
+                    className="text-rose-500 hover:text-rose-800 font-black shrink-0"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleSaveProduct} className="space-y-4">
                 {/* 2-Column fields */}
