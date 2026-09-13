@@ -26,7 +26,7 @@ import { paymentRouter } from './src/payment';
 
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'annapurna_secret_key_2026';
 
 // Initialize Database on startup
