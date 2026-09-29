@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Product, CartItem, Order, Category } from './types';
+import { Product, CartItem, Order, Category, getProductImages } from './types';
+import ImageSlider from './components/ImageSlider';
 import { categories, products } from './data';
 import ProductCard from './components/ProductCard';
 import ProductIllustration, { getBackgroundImageUrl } from './components/ProductIllustration';
@@ -656,7 +657,7 @@ export default function App() {
   };
 
   // Handle active checkout order placement
-  const handlePlaceOrder = async (deliveryAddress: any, paymentMethod: 'cod' | 'upi' | 'card', couponDiscount: number) => {
+  const handlePlaceOrder = async (deliveryAddress: any, paymentMethod: 'cod' | 'upi', couponDiscount: number) => {
     const itemTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
     const packingFee = 3;
     const deliveryCharge = itemTotal >= 99 ? 0 : 15;
@@ -1461,12 +1462,11 @@ export default function App() {
 
               {/* Left Panel - Big illustrative pack */}
               <div className="w-full md:w-1/2 bg-neutral-50 rounded-2xl border border-neutral-100 p-4 flex flex-col justify-center items-center min-h-[220px]">
-                <div className="w-full aspect-square max-w-[200px] rounded-2xl overflow-hidden shadow-inner border border-neutral-200 relative bg-white">
-                  <img
-                    src={quickViewProduct.image || getBackgroundImageUrl(quickViewProduct.id)}
+                <div className="w-full aspect-square max-w-[260px] rounded-2xl overflow-hidden shadow-inner border border-neutral-200 relative bg-white">
+                  <ImageSlider
+                    images={getProductImages(quickViewProduct, getBackgroundImageUrl(quickViewProduct.id))}
                     alt={quickViewProduct.name}
-                    className="w-full h-full object-cover opacity-100 transition-all duration-300"
-                    referrerPolicy="no-referrer"
+                    className="w-full h-full"
                   />
                 </div>
                 {quickViewProduct.isVeg && (
