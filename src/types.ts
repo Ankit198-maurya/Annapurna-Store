@@ -24,7 +24,8 @@ export interface Product {
   rating: number;
   reviewsCount: number;
   inStock: boolean;
-  image?: string;
+  image?: string; // main / cover image
+  images?: string[]; // optional extra gallery images (swipeable slider). The cover image is always shown first.
   variants?: ProductVariant[]; // optional pack-size choices (e.g. Ghee: 250gm / 500gm)
 }
 
@@ -50,7 +51,7 @@ export interface Order {
     latitude?: string;
     longitude?: string;
   };
-  paymentMethod: 'cod' | 'upi' | 'card';
+  paymentMethod: 'cod' | 'upi';
   status: 'pending' | 'preparing' | 'dispatched' | 'delivered' | 'cancelled';
   timestamp: string;
   eta: number; // minutes remaining
@@ -77,4 +78,11 @@ export interface Recipe {
     customNote?: string;
   }[];
   steps: string[];
+}
+
+// All gallery images for a product: cover image first, then the extra ones (de-duplicated).
+export function getProductImages(product: Product, fallback: string): string[] {
+  const list = [product.image, ...(product.images || [])].filter((u): u is string => !!u && u.trim() !== '');
+  const unique = Array.from(new Set(list));
+  return unique.length > 0 ? unique : [fallback];
 }
