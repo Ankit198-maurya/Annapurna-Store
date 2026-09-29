@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,                       -- Store's Order ID (e.g., ord-12345)
   created_at TIMESTAMPTZ DEFAULT NOW(),      -- Timestamp when the order was saved
   total_amount NUMERIC NOT NULL,             -- Total amount paid for the order
-  payment_method TEXT NOT NULL,              -- Payment method used ('cod', 'upi', 'card')
+  payment_method TEXT NOT NULL,              -- Payment method used ('cod', 'upi')
   status TEXT NOT NULL,                      -- Status of the order ('pending', 'dispatched', etc.)
   delivery_address JSONB NOT NULL,           -- Full delivery address details (as JSON)
   items JSONB NOT NULL,                      -- Order items purchased (as JSON array)
@@ -35,3 +35,11 @@ CREATE POLICY "Allow anonymous and auth select" ON orders
 CREATE POLICY "Allow updates" ON orders
   FOR UPDATE TO anon, authenticated
   USING (true);
+
+
+-- ====================================================================
+-- 6. PRODUCT GALLERY (swipeable multiple images per product)
+-- ====================================================================
+-- Run this once in the Supabase SQL Editor. The column holds a JSON array
+-- of extra image URLs; the existing "image" column stays the cover photo.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB;
