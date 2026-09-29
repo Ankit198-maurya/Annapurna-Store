@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Product, CartItem } from '../types';
+import { Product, CartItem, getProductImages } from '../types';
+import ImageSlider from './ImageSlider';
 import { Heart, Star, Plus, Minus, Check, ShoppingCart, Percent } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductIllustration, { getBackgroundImageUrl } from './ProductIllustration';
@@ -212,13 +213,12 @@ export default function ProductCard({
         onClick={() => onQuickView(product)}
         className="w-full h-28 sm:h-44 rounded-t-2xl flex justify-center items-center border-b border-neutral-100 dark:border-neutral-800 cursor-pointer relative group overflow-hidden bg-white dark:bg-neutral-950"
       >
-        <img
-          src={product.image || getBackgroundImageUrl(product.id)}
+        <ImageSlider
+          images={getProductImages(product, getBackgroundImageUrl(product.id))}
           alt={product.name}
-          className="w-full h-full object-cover opacity-100 group-hover:scale-105 transition-transform duration-500"
-          referrerPolicy="no-referrer"
+          className="w-full h-full"
         />
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-center items-center z-20">
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-center items-center z-10 pointer-events-none">
           <span className="bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 text-[10px] font-bold py-1 px-2.5 rounded-full shadow-lg border border-neutral-200 dark:border-neutral-700">
             Quick View
           </span>
