@@ -61,6 +61,9 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
   const [pImageFile, setPImageFile] = useState<File | null>(null);
   const [pImageUrl, setPImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  // Extra gallery images (shown as a swipeable slider after the cover image)
+  const [pExtraImages, setPExtraImages] = useState<string[]>([]);
+  const [uploadingExtra, setUploadingExtra] = useState(false);
   const [productToDelete, setProductToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Size / pack-weight choices (e.g. Ghee 250gm vs 500gm). Optional per product -
@@ -343,6 +346,49 @@ try {
     }
   };
 
+  const handleExtraImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    setUploadingExtra(true);
+    setError(null);
+    try {
+      const uploaded: string[] = [];
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `products/${Date.now()}-${Math.floor(Math.random() * 100000)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('store')
+          .upload(filePath, file, { cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from('store').getPublicUrl(filePath);
+        uploaded.push(data.publicUrl);
+      }
+      setPExtraImages((prev) => [...prev, ...uploaded]);
+      showSuccess(`${uploaded.length} image${uploaded.length > 1 ? 's' : ''} added to gallery!`);
+    } catch (err: any) {
+      console.error('Failed to upload gallery images:', err);
+      setError(err.message || 'Failed to upload gallery images');
+    } finally {
+      setUploadingExtra(false);
+    }
+  };
+
+  const removeExtraImage = (idx: number) => {
+    setPExtraImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const moveExtraImage = (idx: number, dir: -1 | 1) => {
+    setPExtraImages((prev) => {
+      const j = idx + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const copy = [...prev];
+      [copy[idx], copy[j]] = [copy[j], copy[idx]];
+      return copy;
+    });
+  };
+
   const openAddModal = () => {
     setError(null);
     setEditingProduct(null);
@@ -358,6 +404,7 @@ try {
     setPColorTheme('emerald');
     setPImageUrl('');
     setPImageFile(null);
+    setPExtraImages([]);
     setPVariants([]);
     setIsProductModalOpen(true);
   };
@@ -377,6 +424,7 @@ try {
     setPColorTheme(p.colorTheme || 'emerald');
     setPImageUrl(p.image || '');
     setPImageFile(null);
+    setPExtraImages(p.images || []);
     setPVariants(
       (p.variants || []).map((v, idx) => ({
         key: `existing-${v.id || idx}`,
@@ -439,6 +487,8 @@ try {
     if (pImageUrl) {
       payload.image = pImageUrl;
     }
+    // Extra gallery images (JSONB array). null when none, so old products are unaffected.
+    payload.images = pExtraImages.length > 0 ? pExtraImages : null;
 
     try {
       if (editingProduct) {
@@ -1294,6 +1344,52 @@ try {
                       <p className="text-[10px] text-neutral-400 font-bold mt-1.5 leading-none">JPEG, JPG, PNG or WEBP. Max size 5MB.</p>
                     </div>
                   </div>
+                </div>
+
+                {/* MORE PHOTOS (swipeable gallery) */}
+                <div className="bg-neutral-50 p-4 rounded-2xl border border-dashed border-neutral-300">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">More Photos (Swipeable Gallery)</label>
+                  <p className="text-[10px] text-neutral-400 font-bold mb-3 leading-snug">
+                    The image above is the cover. Add extra photos here — customers can swipe through all of them.
+                  </p>
+
+                  {pExtraImages.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {pExtraImages.map((url, idx) => (
+                        <div key={`${url}-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-neutral-300 bg-white group">
+                          <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeExtraImage(idx)}
+                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white text-[11px] font-black leading-none flex items-center justify-center shadow"
+                            title="Remove"
+                          >
+                            ×
+                          </button>
+                          <div className="absolute bottom-0 inset-x-0 flex justify-between bg-black/50 text-white text-[11px] font-black">
+                            <button type="button" onClick={() => moveExtraImage(idx, -1)} disabled={idx === 0} className="px-1.5 py-0.5 disabled:opacity-30" title="Move left">‹</button>
+                            <button type="button" onClick={() => moveExtraImage(idx, 1)} disabled={idx === pExtraImages.length - 1} className="px-1.5 py-0.5 disabled:opacity-30" title="Move right">›</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleExtraImagesUpload}
+                    className="hidden"
+                    id="ownerProductExtraImagesInput"
+                  />
+                  <label
+                    htmlFor="ownerProductExtraImagesInput"
+                    className="inline-flex items-center space-x-1.5 bg-white border border-neutral-300 hover:bg-neutral-100 text-neutral-700 text-[11px] font-extrabold px-3 py-2 rounded-xl shadow-sm cursor-pointer transition-all uppercase tracking-wide"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{uploadingExtra ? 'Uploading...' : 'Add Photos'}</span>
+                  </label>
                 </div>
 
                 {/* Theme Selector */}
