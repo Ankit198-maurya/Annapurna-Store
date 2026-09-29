@@ -33,6 +33,16 @@ export function normalizeSupabaseProduct(dbProduct: any): Product {
     }
   }
 
+  // Extra gallery images are stored as a JSONB array of URLs in `images`.
+  let images = dbProduct.images;
+  if (typeof images === 'string') {
+    try {
+      images = JSON.parse(images);
+    } catch (e) {
+      images = undefined;
+    }
+  }
+
   return {
     id: dbProduct.id,
     name: dbProduct.name,
@@ -49,6 +59,7 @@ export function normalizeSupabaseProduct(dbProduct: any): Product {
     reviewsCount: dbProduct.reviews_count !== undefined ? Number(dbProduct.reviews_count) : (dbProduct.reviewsCount !== undefined ? dbProduct.reviewsCount : 10),
     inStock: dbProduct.in_stock !== undefined ? dbProduct.in_stock : (dbProduct.inStock !== undefined ? dbProduct.inStock : true),
     image: dbProduct.image || '',
+    images: Array.isArray(images) ? images.filter((u: any) => typeof u === 'string' && u) : undefined,
     variants: Array.isArray(variants) && variants.length > 0 ? variants : undefined,
   };
 }
