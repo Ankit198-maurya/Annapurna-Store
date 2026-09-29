@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CartItem } from '../types';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Check, Percent, MapPin, Phone, User, Home, CreditCard, QrCode, Lock, RefreshCw, ArrowLeft, Loader2 } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Check, Percent, MapPin, Phone, User, Home, QrCode, Lock, RefreshCw, ArrowLeft, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import UPIMerchantPayment from './UPIMerchantPayment';
 
@@ -28,7 +28,7 @@ export default function CartDrawer({
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
-  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'payment_upi' | 'payment_card'>('cart');
+  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'payment_upi'>('cart');
 
   // Checkout form fields
   const [name, setName] = useState('');
@@ -42,7 +42,7 @@ export default function CartDrawer({
   const [longitude, setLongitude] = useState('');
   const [isLocating, setIsLocating] = useState(false);
   const [locatingError, setLocatingError] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi'>('cod');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
 
@@ -66,14 +66,6 @@ export default function CartDrawer({
     }
     onPlaceOrder(address, method, discount);
   };
-
-  // Card details state
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [isCvvFocused, setIsCvvFocused] = useState(false);
-  const [cardError, setCardError] = useState('');
 
   // UPI/Universal payment process states
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -205,29 +197,6 @@ export default function CartDrawer({
     setCouponCode('');
   };
 
-  // Card Formatters
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawVal = e.target.value.replace(/\D/g, '');
-    const limited = rawVal.slice(0, 16);
-    const formatted = limited.replace(/(\d{4})(?=\d)/g, '$1 ');
-    setCardNumber(formatted);
-  };
-
-  const handleCardExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawVal = e.target.value.replace(/\D/g, '');
-    const limited = rawVal.slice(0, 4);
-    let formatted = limited;
-    if (limited.length > 2) {
-      formatted = `${limited.slice(0, 2)}/${limited.slice(2)}`;
-    }
-    setCardExpiry(formatted);
-  };
-
-  const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawVal = e.target.value.replace(/\D/g, '');
-    setCardCvv(rawVal.slice(0, 3));
-  };
-
   // Payment Simulators
   const handleUpiSuccess = () => {
     setIsProcessingPayment(true);
@@ -245,51 +214,6 @@ export default function CartDrawer({
         setPaymentStep('idle');
       }, 1000);
     }, 1800);
-  };
-
-  const handleCardSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCardError('');
-    
-    if (cardNumber.replace(/\s/g, '').length !== 16) {
-      setCardError('Please enter a valid 16-digit card number.');
-      return;
-    }
-    const cleanExpiry = cardExpiry.replace('/', '');
-    if (cleanExpiry.length !== 4) {
-      setCardError('Please enter a valid expiry date (MM/YY).');
-      return;
-    }
-    if (cardCvv.length !== 3) {
-      setCardError('Please enter a 3-digit CVV number.');
-      return;
-    }
-    const nameToUse = cardName.trim() || name.trim();
-    if (!nameToUse) {
-      setCardError('Please enter the cardholder name.');
-      return;
-    }
-
-    setIsProcessingPayment(true);
-    setPaymentStep('authorizing');
-
-    setTimeout(() => {
-      setPaymentStep('success');
-      setTimeout(() => {
-        handleSaveAddressAndPlaceOrder(
-          { name, phone, flat, area, landmark, city, pincode, latitude, longitude },
-          'card',
-          couponDiscount
-        );
-        setCheckoutStep('cart');
-        setIsProcessingPayment(false);
-        setPaymentStep('idle');
-        setCardNumber('');
-        setCardName('');
-        setCardExpiry('');
-        setCardCvv('');
-      }, 1000);
-    }, 2000);
   };
 
   const finalTotal = Math.max(0, itemTotal + deliveryCharge + PACKING_FEE - couponDiscount);
@@ -320,8 +244,6 @@ export default function CartDrawer({
     if (validateForm()) {
       if (paymentMethod === 'upi') {
         setCheckoutStep('payment_upi');
-      } else if (paymentMethod === 'card') {
-        setCheckoutStep('payment_card');
       } else {
         handleSaveAddressAndPlaceOrder(
           { name, phone, flat, area, landmark, city, pincode, latitude, longitude },
@@ -793,7 +715,7 @@ export default function CartDrawer({
                   {/* Payment method */}
                   <div className="space-y-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
                     <h4 className="font-extrabold text-sm text-neutral-800 dark:text-neutral-100">Select Payment Method</h4>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('cod')}
@@ -821,20 +743,6 @@ export default function CartDrawer({
                         <span className="text-lg">📱</span>
                         <span>UPI QR</span>
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('card')}
-                        className={`p-3 rounded-xl border font-bold text-xs flex flex-col justify-center items-center gap-1 transition-all ${
-                          paymentMethod === 'card'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-800 dark:text-emerald-300 shadow'
-                            : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800'
-                        }`}
-                        id="payment-card"
-                      >
-                        <span className="text-lg">💳</span>
-                        <span>Card/Net</span>
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -854,16 +762,14 @@ export default function CartDrawer({
                     <span>
                       {paymentMethod === 'cod' 
                         ? 'PLACE ORDER' 
-                        : paymentMethod === 'upi' 
-                          ? 'PROCEED TO UPI QR PORTAL' 
-                          : 'PROCEED TO SECURE CARD PAY'
+                        : 'PROCEED TO UPI QR PORTAL'
                       }
                     </span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </form>
-            ) : checkoutStep === 'payment_upi' ? (
+            ) : (
               <UPIMerchantPayment
                 totalAmount={finalTotal}
                 onPaymentSuccess={() => {
@@ -876,211 +782,6 @@ export default function CartDrawer({
                 }}
                 onCancel={() => setCheckoutStep('checkout')}
               />
-            ) : (
-              // --- CARD PAYMENT PORTAL ---
-              <div className="flex-grow flex flex-col overflow-hidden">
-                {/* Back link header */}
-                <div className="p-4 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-850 shrink-0 flex items-center gap-2 transition-colors duration-300">
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutStep('checkout')}
-                    disabled={isProcessingPayment}
-                    className="text-xs text-emerald-700 dark:text-emerald-400 font-black hover:underline disabled:opacity-50"
-                  >
-                    ← Back to Details
-                  </button>
-                  <span className="text-xs text-neutral-400 dark:text-neutral-500">/ Secure Card Checkout</span>
-                </div>
-
-                {/* Form area scrollable */}
-                <form onSubmit={handleCardSubmit} className="flex-grow flex flex-col overflow-hidden">
-                  <div className="flex-grow overflow-y-auto p-4 space-y-4">
-                    {/* Visual Card Display */}
-                    <div className="w-full mb-4">
-                      <AnimatePresence mode="wait">
-                        {isCvvFocused ? (
-                          <motion.div
-                            key="back"
-                            initial={{ rotateY: -90, opacity: 0 }}
-                            animate={{ rotateY: 0, opacity: 1 }}
-                            exit={{ rotateY: 90, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            {/* Card back visual */}
-                            <div className="relative w-full h-40 rounded-2xl bg-gradient-to-r from-neutral-800 via-neutral-950 to-neutral-900 p-5 text-white shadow-xl overflow-hidden flex flex-col justify-between border border-neutral-700/50">
-                              {/* Magnetic stripe */}
-                              <div className="absolute top-5 left-0 right-0 h-8 bg-neutral-950" />
-                              <div className="mt-10 flex items-center justify-between gap-4">
-                                {/* Signature strip */}
-                                <div className="flex-grow bg-neutral-100/90 h-8 rounded px-2 flex items-center justify-end font-mono text-black text-[10px] font-semibold italic select-none">
-                                  Annapurna Premium Customer
-                                </div>
-                                {/* CVV */}
-                                <div className="bg-amber-400 text-black px-3 py-1.5 rounded font-mono font-extrabold text-xs shadow-inner">
-                                  {cardCvv || '•••'}
-                                </div>
-                              </div>
-                              <p className="text-[7px] text-neutral-400 leading-tight">
-                                Sandbox Card Security System. Do not enter actual confidential credentials.
-                              </p>
-                            </div>
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="front"
-                            initial={{ rotateY: 90, opacity: 0 }}
-                            animate={{ rotateY: 0, opacity: 1 }}
-                            exit={{ rotateY: -90, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            {/* Card front visual */}
-                            <div className="relative w-full h-40 rounded-2xl bg-gradient-to-r from-indigo-950 via-purple-900 to-neutral-950 p-5 text-white shadow-xl overflow-hidden flex flex-col justify-between border border-white/10">
-                              {/* Glass glossy overlay */}
-                              <div className="absolute inset-0 bg-white/5 backdrop-blur-xs pointer-events-none" />
-                              {/* Card brand & wifi */}
-                              <div className="flex justify-between items-center z-10">
-                                <span className="font-extrabold text-[10px] tracking-widest text-indigo-200">ANNAPURNA PREMIUM</span>
-                                <span className="text-base">💳</span>
-                              </div>
-                              {/* Chip */}
-                              <div className="flex gap-2 items-center z-10 my-1">
-                                <div className="w-7 h-5 rounded-md bg-gradient-to-tr from-yellow-500 to-amber-300 opacity-90 border border-amber-600" />
-                                <span className="text-[8px] text-indigo-300/80 font-bold uppercase tracking-wider">Contactless Sandbox</span>
-                              </div>
-                              {/* Card number */}
-                              <div className="font-mono text-base tracking-wider text-center py-1 z-10">
-                                {cardNumber || '•••• •••• •••• ••••'}
-                              </div>
-                              {/* Card holder & expiry */}
-                              <div className="flex justify-between items-end z-10">
-                                <div>
-                                  <p className="text-[7px] uppercase text-indigo-200/60 font-bold">Card Holder</p>
-                                  <p className="font-bold text-[10px] uppercase tracking-wide truncate max-w-[180px]">{cardName || name || 'VALUED CUSTOMER'}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-[7px] uppercase text-indigo-200/60 font-bold">Expires</p>
-                                  <p className="font-mono font-bold text-[10px]">{cardExpiry || 'MM/YY'}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {cardError && (
-                      <div className="bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-xs font-bold p-3 rounded-xl border border-rose-100 dark:border-rose-900">
-                        ⚠️ {cardError}
-                      </div>
-                    )}
-
-                    <div className="space-y-3">
-                      {/* Cardholder name input */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                          Cardholder Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={name || "e.g. Rahul Sharma"}
-                          value={cardName}
-                          onChange={(e) => setCardName(e.target.value)}
-                          disabled={isProcessingPayment}
-                          className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg text-xs font-semibold focus:outline-none focus:border-emerald-500 text-neutral-800 dark:text-neutral-100"
-                          id="card-holder-name-input"
-                        />
-                      </div>
-
-                      {/* Card Number Input */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                          Card Number
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="4111 2222 3333 4444"
-                          value={cardNumber}
-                          onChange={handleCardNumberChange}
-                          disabled={isProcessingPayment}
-                          className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg text-xs font-semibold font-mono tracking-wider focus:outline-none focus:border-emerald-500 text-neutral-800 dark:text-neutral-100"
-                          id="card-number-input"
-                        />
-                      </div>
-
-                      {/* Expiry & CVV */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                            Expiry Date
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="MM/YY"
-                            value={cardExpiry}
-                            onChange={handleCardExpiryChange}
-                            disabled={isProcessingPayment}
-                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg text-xs font-semibold font-mono focus:outline-none focus:border-emerald-500 text-neutral-800 dark:text-neutral-100"
-                            id="card-expiry-input"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                            CVV
-                          </label>
-                          <input
-                            type="password"
-                            placeholder="•••"
-                            value={cardCvv}
-                            onChange={handleCvvChange}
-                            onFocus={() => setIsCvvFocused(true)}
-                            onBlur={() => setIsCvvFocused(false)}
-                            disabled={isProcessingPayment}
-                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg text-xs font-semibold font-mono focus:outline-none focus:border-emerald-500 text-neutral-800 dark:text-neutral-100"
-                            id="card-cvv-input"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-neutral-100 dark:bg-neutral-900 p-3 rounded-xl border border-neutral-200 dark:border-neutral-800">
-                      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-semibold">
-                        🔒 <b>Banking Sandbox Protection:</b> No real transaction takes place. Feel free to type dummy values like Visa testing card <i>4111 2222 3333 4444</i> with any valid date and CVV.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Card payment footer */}
-                  <div className="p-4 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 shrink-0 transition-colors duration-300 space-y-2">
-                    <button
-                      type="submit"
-                      disabled={isProcessingPayment}
-                      className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-neutral-300 text-white py-3.5 rounded-xl font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition-colors"
-                      id="card-pay-btn"
-                    >
-                      {isProcessingPayment ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Processing Secure Payment...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="w-4 h-4" />
-                          <span>PAY ₹{finalTotal} SECURELY</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCheckoutStep('checkout')}
-                      disabled={isProcessingPayment}
-                      className="w-full bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 py-2.5 rounded-xl font-bold text-xs transition-colors"
-                    >
-                      Cancel & Go Back
-                    </button>
-                  </div>
-                </form>
-              </div>
             )}
           </motion.div>
         </>
