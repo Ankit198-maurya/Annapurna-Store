@@ -50,7 +50,7 @@ export default function ImageSlider({
   if (count <= 1) {
     return (
       <div className={`relative overflow-hidden ${className}`} onClick={onClick}>
-        <img src={images[0]} alt={alt} className={imgClassName} referrerPolicy="no-referrer" draggable={false} />
+        <img src={images[0]} alt={alt} loading="lazy" decoding="async" className={imgClassName} referrerPolicy="no-referrer" draggable={false} />
       </div>
     );
   }
@@ -73,7 +73,8 @@ export default function ImageSlider({
             className={`${imgClassName} shrink-0 w-full snap-center`}
             referrerPolicy="no-referrer"
             draggable={false}
-            loading={i === 0 ? 'eager' : 'lazy'}
+            loading="lazy"
+            decoding="async"
           />
         ))}
       </div>
