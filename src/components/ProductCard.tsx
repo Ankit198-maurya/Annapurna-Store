@@ -157,6 +157,8 @@ export default function ProductCard({
     <img
       src={product.image || getBackgroundImageUrl(product.id)}
       alt={product.name}
+      loading="lazy"
+      decoding="async"
       className="w-full h-full object-cover rounded-2xl"
     />
   );
