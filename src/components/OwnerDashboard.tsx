@@ -7,6 +7,7 @@ import {
 import { Product, Order } from '../types';
 import { products as fallbackProducts } from '../data';
 import { supabase, normalizeSupabaseOrder, normalizeSupabaseProduct } from '../supabase';
+import { compressImage, IMAGE_CACHE_CONTROL } from '../imageUtils';
 interface OwnerDashboardProps {
   onLogout: () => void;
   token: string;
@@ -100,10 +101,13 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
   useEffect(() => {
     fetchDashboardData();
 
-    // Setup periodic silent polling to fetch fresh orders instantly (every 3 seconds)
+    // Setup periodic silent polling to fetch fresh orders
+    // (30s, and skipped while the tab is hidden - polling every 3s was burning the Supabase egress quota)
     const interval = setInterval(() => {
-      fetchDashboardData(true);
-    }, 3000);
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData(true);
+      }
+    }, 30000);
 
     // Cross-tab storage listener to sync immediately when an order is placed locally
     const handleStorage = (e: StorageEvent) => {
@@ -323,12 +327,13 @@ try {
     setError(null);
 
     try {
-      const fileExt = file.name.split('.').pop();
+      const small = await compressImage(file);
+      const fileExt = small.name.split('.').pop();
       const filePath = `products/${Date.now()}-${Math.floor(Math.random() * 100000)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('store')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+        .upload(filePath, small, { cacheControl: IMAGE_CACHE_CONTROL, upsert: false });
 
       if (uploadError) throw uploadError;
 
@@ -356,11 +361,12 @@ try {
     try {
       const uploaded: string[] = [];
       for (const file of files) {
-        const fileExt = file.name.split('.').pop();
+        const small = await compressImage(file);
+        const fileExt = small.name.split('.').pop();
         const filePath = `products/${Date.now()}-${Math.floor(Math.random() * 100000)}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from('store')
-          .upload(filePath, file, { cacheControl: '3600', upsert: false });
+          .upload(filePath, small, { cacheControl: IMAGE_CACHE_CONTROL, upsert: false });
         if (uploadError) throw uploadError;
         const { data } = supabase.storage.from('store').getPublicUrl(filePath);
         uploaded.push(data.publicUrl);
@@ -898,6 +904,7 @@ try {
                                     <img 
                                       src={p.image} 
                                       alt={p.name} 
+                                      loading="lazy"
                                       className="w-10 h-10 object-cover rounded-xl border border-neutral-100 shadow-inner shrink-0" 
                                     />
                                   ) : (
