@@ -230,43 +230,42 @@ export default function App() {
     ordersRef.current = orders;
   }, [orders]);
 
-  // Poll pending orders' statuses to keep them updated
+  // Poll pending orders' statuses to keep them updated.
+  // One small query (status only, all pending orders at once) every 20s, and
+  // only while the tab is visible - this used to fetch full rows every 4s per order.
   useEffect(() => {
     const pollPendingOrders = async () => {
+      if (document.visibilityState !== 'visible') return;
       const currentOrders = ordersRef.current;
-      const pendingOrders = currentOrders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
-      if (pendingOrders.length === 0) return;
+      const pendingIds = currentOrders
+        .filter((o) => o.status !== 'delivered' && o.status !== 'cancelled')
+        .map((o) => o.id);
+      if (pendingIds.length === 0) return;
 
-      let hasChanges = false;
-      const updatedOrders = await Promise.all(
-        currentOrders.map(async (o) => {
-          if (o.status === 'delivered' || o.status === 'cancelled') return o;
-          try {
-            const { data, error } = await supabase
-              .from('orders')
-              .select('*')
-              .eq('Name', o.id)
-              .maybeSingle();
-            if (!error && data) {
-              const updated = normalizeSupabaseOrder(data);
-              if (updated.status !== o.status) {
-                hasChanges = true;
-                return updated;
-              }
-            }
-          } catch (err) {
-            // Order not found in Supabase (e.g. local-only fallback order) - skip silently
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('Name, status')
+          .in('Name', pendingIds);
+        if (error || !data) return;
+
+        const statusById = new Map<string, string>(data.map((r: any) => [r.Name, r.status]));
+        let hasChanges = false;
+        const updatedOrders = currentOrders.map((o) => {
+          const newStatus = statusById.get(o.id);
+          if (newStatus && newStatus !== o.status) {
+            hasChanges = true;
+            return { ...o, status: newStatus as Order['status'] };
           }
           return o;
-        })
-      );
-
-      if (hasChanges) {
-        setOrders(updatedOrders);
+        });
+        if (hasChanges) setOrders(updatedOrders);
+      } catch (err) {
+        // Offline or local-only order - skip silently
       }
     };
 
-    const interval = setInterval(pollPendingOrders, 4000);
+    const interval = setInterval(pollPendingOrders, 20000);
     return () => clearInterval(interval);
   }, []);
 
