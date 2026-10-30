@@ -5,13 +5,13 @@ const supabaseUrl =
   (typeof process !== 'undefined' && process.env?.SUPABASE_URL) || 
   (typeof window !== 'undefined' && (window as any).env?.VITE_SUPABASE_URL) ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) || 
-  'https://kkfemwduwimomkalgzua.supabase.co';
+  'https://ewkhbfpnnjiixmktqqvn.supabase.co';
 
 const supabaseKey = 
   (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) || 
   (typeof window !== 'undefined' && (window as any).env?.VITE_SUPABASE_ANON_KEY) ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) || 
-  'sb_publishable_wCXTH0DusaCDVjLKSlIxtw_8KJ8oklp';
+  'sb_publishable_fRxKxjpYvJ2Q7KK32hHPJQ_SjaK9Tq_';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
