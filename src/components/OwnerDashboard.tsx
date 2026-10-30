@@ -509,7 +509,7 @@ try {
         payload.rating = 4.5;
         payload.reviewsCount = 10;
         if (!payload.image) {
-          payload.image = 'https://kkfemwduwimomkalgzua.supabase.co/storage/v1/object/public/store/zhakaas.jpeg';
+          payload.image = 'https://ewkhbfpnnjiixmktqqvn.supabase.co/storage/v1/object/public/store/zhakaas.jpeg';
         }
         const { error } = await supabase
           .from('products')
