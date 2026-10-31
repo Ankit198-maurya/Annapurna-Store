@@ -476,9 +476,9 @@ export default function App() {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q)
+          (p.name ?? '').toLowerCase().includes(q) ||
+          (p.brand ?? '').toLowerCase().includes(q) ||
+          (p.description ?? '').toLowerCase().includes(q)
       );
     }
 
@@ -495,7 +495,7 @@ export default function App() {
     } else if (sortBy === 'rating') {
       result.sort((a, b) => b.rating - a.rating);
     } else if (sortBy === 'name') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
+      result.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
     }
 
     return result;
