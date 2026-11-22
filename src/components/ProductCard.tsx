@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Product, CartItem, getProductImages } from '../types';
+import { Product, CartItem, getProductImages, isInStock } from '../types';
 import ImageSlider from './ImageSlider';
 import { Heart, Star, Plus, Minus, Check, ShoppingCart, Percent } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -24,6 +24,7 @@ export default function ProductCard({
   onQuickView,
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const inStock = isInStock(product);
 
   // --- Size / pack-weight variant selection (e.g. Ghee 250gm vs 500gm) ---
   const hasVariants = !!product.variants && product.variants.length > 0;
@@ -218,8 +219,18 @@ export default function ProductCard({
         <ImageSlider
           images={getProductImages(product, getBackgroundImageUrl(product.id))}
           alt={product.name}
-          className="w-full h-full"
+          className={`w-full h-full ${!inStock ? 'grayscale opacity-50' : ''}`}
         />
+        {!inStock && (
+          <div className="absolute inset-0 z-10 flex justify-center items-center pointer-events-none">
+            <span
+              className="bg-rose-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg"
+              id={`out-of-stock-badge-${product.id}`}
+            >
+              Out of Stock
+            </span>
+          </div>
+        )}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-center items-center z-10 pointer-events-none">
           <span className="bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 text-[10px] font-bold py-1 px-2.5 rounded-full shadow-lg border border-neutral-200 dark:border-neutral-700">
             Quick View
@@ -280,7 +291,7 @@ export default function ProductCard({
           <div className="flex flex-col">
             <span className="text-xs text-neutral-400 dark:text-neutral-500 line-through font-medium">MRP ₹{effectiveMrp}</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-base sm:text-lg font-black text-neutral-900 dark:text-white">₹{effectivePrice}</span>
+              <span className={`text-base sm:text-lg font-black ${inStock ? 'text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-neutral-500'}`}>₹{effectivePrice}</span>
               {savings > 0 && (
                 <span className="hidden sm:inline text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded">
                   Save ₹{savings}
@@ -292,7 +303,18 @@ export default function ProductCard({
           {/* Blinkit/Instamart styled Add Button Stepper */}
           <div className="w-16 sm:w-24 h-8 sm:h-9 shrink-0 flex items-center justify-end">
             <AnimatePresence mode="wait">
-              {quantity === 0 ? (
+              {!inStock ? (
+                <motion.button
+                  key="oos-btn"
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className="w-full h-full bg-neutral-100 dark:bg-neutral-800 text-rose-600 dark:text-rose-400 border border-neutral-200 dark:border-neutral-700 font-extrabold text-[9px] sm:text-[10px] leading-tight rounded-xl cursor-not-allowed flex justify-center items-center text-center px-1"
+                  id={`add-to-cart-${product.id}`}
+                >
+                  OUT OF STOCK
+                </motion.button>
+              ) : quantity === 0 ? (
                 <motion.button
                   key="add-btn"
                   initial={{ opacity: 0, scale: 0.9 }}
