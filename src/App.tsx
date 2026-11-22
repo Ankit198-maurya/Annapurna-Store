@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Product, CartItem, Order, Category, getProductImages } from './types';
+import { Product, CartItem, Order, Category, getProductImages, isInStock, baseProductId } from './types';
 import ImageSlider from './components/ImageSlider';
 import { categories, products } from './data';
 import ProductCard from './components/ProductCard';
@@ -484,7 +484,7 @@ export default function App() {
 
     // 4. In Stock Filter
     if (onlyInStock) {
-      result = result.filter((p) => p.inStock);
+      result = result.filter((p) => isInStock(p));
     }
 
     // 5. Sorting
@@ -501,11 +501,110 @@ export default function App() {
     return result;
   }, [productsList, selectedCategory, selectedBrand, searchQuery, onlyInStock, sortBy]);
 
+  // ---------- STOCK AVAILABILITY ----------
+  // Apply fresh stock flags (productId -> inStock) onto the product list + local cache.
+  const applyStock = (live: Map<string, boolean>) => {
+    setProductsList((prev) => {
+      let changed = false;
+      const next = prev.map((p) => {
+        const flag = live.get(p.id);
+        if (flag === undefined || flag === isInStock(p)) return p;
+        changed = true;
+        return { ...p, inStock: flag };
+      });
+      if (!changed) return prev;
+      try {
+        localStorage.setItem('annapurna_local_products', JSON.stringify(next));
+      } catch (e) {
+        /* storage full / blocked - ignore */
+      }
+      return next;
+    });
+  };
+
+  // Keep stock status fresh while the customer is browsing, so when the owner marks a
+  // product out of stock it shows up here without a page reload. Only 2 small columns
+  // are fetched (not the full product rows) to keep Supabase usage low.
+  useEffect(() => {
+    const syncStock = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const { data, error } = await supabase.from('products').select('id, inStock');
+        if (error || !data) return;
+        applyStock(new Map<string, boolean>(data.map((r: any) => [r.id, r.inStock !== false])));
+      } catch (err) {
+        // offline - keep showing last known stock
+      }
+    };
+    const interval = setInterval(syncStock, 45000);
+    document.addEventListener('visibilitychange', syncStock);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', syncStock);
+    };
+  }, []);
+
+  // Ids of products currently out of stock (used by the recipe bundler)
+  const outOfStockIds = useMemo(
+    () => new Set(productsList.filter((p) => !isInStock(p)).map((p) => p.id)),
+    [productsList]
+  );
+
+  // Cart lines whose product has since been marked out of stock by the owner
+  const unavailableCartIds = useMemo(() => {
+    const ids = new Set<string>();
+    cart.forEach((item) => {
+      const live = productsList.find((p) => p.id === baseProductId(item.product.id));
+      if (live && !isInStock(live)) ids.add(item.product.id);
+    });
+    return ids;
+  }, [cart, productsList]);
+
+  // Re-checks the basket against the live database right before checkout / payment.
+  // Returns the names of any items that are no longer available.
+  const verifyCartStock = async (): Promise<string[]> => {
+    const baseIds: string[] = Array.from(new Set<string>(cart.map((i) => baseProductId(i.product.id))));
+    const live = new Map<string, boolean>();
+    try {
+      const { data, error } = await supabase.from('products').select('id, inStock').in('id', baseIds);
+      if (!error && data) {
+        data.forEach((r: any) => live.set(r.id, r.inStock !== false));
+      }
+    } catch (err) {
+      // offline - fall back to what we already know locally
+    }
+    if (live.size > 0) applyStock(live);
+
+    const names = new Set<string>();
+    cart.forEach((item) => {
+      const bid = baseProductId(item.product.id);
+      let available: boolean;
+      if (live.has(bid)) {
+        available = live.get(bid)!;
+      } else {
+        const known = productsList.find((p) => p.id === bid);
+        available = isInStock(known || item.product);
+      }
+      if (!available) names.add(item.product.name);
+    });
+    return Array.from(names);
+  };
+
   // Cart operations
   // `productOverride` is used when adding a size-variant cart line (e.g. Ghee 250gm),
   // whose id (`baseId::variantId`) doesn't exist in `productsList` directly - the
   // caller resolves the variant into a full Product object and passes it in.
   const handleUpdateCart = (productId: string, quantity: number, productOverride?: Product) => {
+    // Block adding / increasing anything the owner has marked out of stock
+    if (quantity > 0) {
+      const liveProduct = productsList.find((p) => p.id === baseProductId(productId)) || productOverride;
+      const currentQty = cart.find((item) => item.product.id === productId)?.quantity || 0;
+      if (liveProduct && !isInStock(liveProduct) && quantity > currentQty) {
+        alert(`Sorry, "${liveProduct.name}" is currently out of stock.`);
+        return;
+      }
+    }
+
     setCart((prev) => {
       const existingIndex = prev.findIndex((item) => item.product.id === productId);
 
@@ -536,10 +635,21 @@ export default function App() {
   };
 
   // Add multiple items at once (from Recipe bundles)
-  const handleAddMultipleToCart = (itemsToAdd: { productId: string; quantity: number }[]) => {
+  // Returns the names of any items skipped because they are out of stock.
+  const handleAddMultipleToCart = (itemsToAdd: { productId: string; quantity: number }[]): string[] => {
+    const skipped: string[] = [];
+    const allowedItems = itemsToAdd.filter(({ productId }) => {
+      const p = productsList.find((x) => x.id === productId);
+      if (p && !isInStock(p)) {
+        skipped.push(p.name);
+        return false;
+      }
+      return true;
+    });
+
     setCart((prev) => {
       const updated = [...prev];
-      itemsToAdd.forEach(({ productId, quantity }) => {
+      allowedItems.forEach(({ productId, quantity }) => {
         const product = productsList.find((p) => p.id === productId);
         if (!product) return;
 
@@ -552,6 +662,8 @@ export default function App() {
       });
       return updated;
     });
+
+    return skipped;
   };
 
   // Customer-initiated order cancellation
@@ -642,6 +754,9 @@ export default function App() {
     : '';
   const quickViewEffectivePrice = quickViewSelectedVariant ? quickViewSelectedVariant.price : quickViewProduct?.price ?? 0;
   const quickViewEffectiveMrp = quickViewSelectedVariant ? quickViewSelectedVariant.mrp : quickViewProduct?.mrp ?? 0;
+  const quickViewInStock = quickViewProduct
+    ? isInStock(productsList.find((p) => p.id === quickViewProduct.id) || quickViewProduct)
+    : true;
   const quickViewEffectiveUnit = quickViewSelectedVariant ? quickViewSelectedVariant.unit : quickViewProduct?.unit ?? '';
   const buildQuickViewCartProduct = (): Product | undefined => {
     if (!quickViewProduct) return undefined;
@@ -657,6 +772,15 @@ export default function App() {
 
   // Handle active checkout order placement
   const handlePlaceOrder = async (deliveryAddress: any, paymentMethod: 'cod' | 'upi', couponDiscount: number) => {
+    // Final safety net: never place an order containing an out-of-stock product
+    const unavailable = await verifyCartStock();
+    if (unavailable.length > 0) {
+      alert(
+        `Sorry, these items just went out of stock and were not ordered:\n\n• ${unavailable.join('\n• ')}\n\nPlease remove them from your basket and try again.`
+      );
+      return;
+    }
+
     const itemTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
     const packingFee = 3;
     const deliveryCharge = itemTotal >= 99 ? 0 : 15;
@@ -1184,7 +1308,7 @@ export default function App() {
             )}
 
             {/* 5. SMART COOK RECIPES INTEGRATION BUNDLER */}
-            <RecipeSection onAddMultipleToCart={handleAddMultipleToCart} cartItems={cart} />
+            <RecipeSection onAddMultipleToCart={handleAddMultipleToCart} cartItems={cart} outOfStockIds={outOfStockIds} />
           </div>
         )}
 
@@ -1465,8 +1589,15 @@ export default function App() {
                   <ImageSlider
                     images={getProductImages(quickViewProduct, getBackgroundImageUrl(quickViewProduct.id))}
                     alt={quickViewProduct.name}
-                    className="w-full h-full"
+                    className={`w-full h-full ${!quickViewInStock ? 'grayscale opacity-50' : ''}`}
                   />
+                  {!quickViewInStock && (
+                    <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
+                      <span className="bg-rose-600 text-white text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg">
+                        Out of Stock
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {quickViewProduct.isVeg && (
                   <div className="mt-4 flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 text-emerald-800 text-[10px] font-extrabold px-3 py-1.5 rounded-xl shadow-sm">
@@ -1540,8 +1671,8 @@ export default function App() {
                     </div>
                     <div className="bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
                       <span className="block text-neutral-400 font-bold uppercase text-[8px]">In Stock Status</span>
-                      <span className={`font-extrabold ${quickViewProduct.inStock ? 'text-emerald-700' : 'text-rose-600'}`}>
-                        {quickViewProduct.inStock ? 'Available now' : 'Out of Stock'}
+                      <span className={`font-extrabold ${quickViewInStock ? 'text-emerald-700' : 'text-rose-600'}`}>
+                        {quickViewInStock ? 'Available now' : 'Out of Stock'}
                       </span>
                     </div>
                   </div>
@@ -1556,7 +1687,7 @@ export default function App() {
 
                   <div className="flex gap-2">
                     {/* Add / stepper control */}
-                    {cart.find((ci) => ci.product.id === quickViewCartId) ? (
+                    {quickViewInStock && cart.find((ci) => ci.product.id === quickViewCartId) ? (
                       <div className="bg-emerald-700 text-white rounded-xl h-11 px-3 flex items-center justify-between gap-4 shadow-md">
                         <button
                           onClick={() => handleUpdateCart(quickViewCartId, (cart.find((ci) => ci.product.id === quickViewCartId)?.quantity || 0) - 1)}
@@ -1580,15 +1711,15 @@ export default function App() {
                           handleUpdateCart(quickViewCartId, 1, buildQuickViewCartProduct());
                           setQuickViewProduct(null);
                         }}
-                        disabled={!quickViewProduct.inStock}
+                        disabled={!quickViewInStock}
                         className={`h-11 px-6 font-extrabold text-xs rounded-xl shadow-md uppercase tracking-wider ${
-                          quickViewProduct.inStock
+                          quickViewInStock
                             ? 'bg-emerald-700 text-white hover:bg-emerald-800'
                             : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                         }`}
                         id={`quickview-add-${quickViewProduct.id}`}
                       >
-                        {quickViewProduct.inStock ? 'Add to Basket' : 'Sold Out'}
+                        {quickViewInStock ? 'Add to Basket' : 'Out of Stock'}
                       </button>
                     )}
                   </div>
@@ -1609,6 +1740,8 @@ export default function App() {
         onClearCart={handleClearCart}
         onPlaceOrder={handlePlaceOrder}
         currentUser={currentUser}
+        unavailableIds={unavailableCartIds}
+        onVerifyStock={verifyCartStock}
       />
 
       {/* 7.5 CUSTOMER AUTHENTICATION MODAL */}
