@@ -13,6 +13,8 @@ interface CartDrawerProps {
   onClearCart: () => void;
   onPlaceOrder: (address: any, paymentMethod: string, couponDiscount: number) => void;
   currentUser?: any;
+  unavailableIds?: Set<string>; // cart line ids that are now out of stock
+  onVerifyStock?: () => Promise<string[]>; // live re-check; returns names of unavailable items
 }
 
 export default function CartDrawer({
@@ -24,6 +26,8 @@ export default function CartDrawer({
   onClearCart,
   onPlaceOrder,
   currentUser,
+  unavailableIds,
+  onVerifyStock,
 }: CartDrawerProps) {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -166,6 +170,35 @@ export default function CartDrawer({
   const mrpTotal = cartItems.reduce((sum, item) => sum + item.product.mrp * item.quantity, 0);
   const productDiscount = mrpTotal - itemTotal;
 
+  // Out-of-stock handling: items the owner has marked unavailable block checkout
+  const isUnavailable = (cartLineId: string) => !!unavailableIds && unavailableIds.has(cartLineId);
+  const unavailableItems = cartItems.filter((item) => isUnavailable(item.product.id));
+  const hasUnavailable = unavailableItems.length > 0;
+  const [isVerifyingStock, setIsVerifyingStock] = useState(false);
+
+  // Live-checks stock. Returns true when everything in the basket is still available.
+  const verifyStockOrWarn = async (): Promise<boolean> => {
+    if (!onVerifyStock) return true;
+    setIsVerifyingStock(true);
+    try {
+      const names = await onVerifyStock();
+      if (names.length > 0) {
+        setCheckoutStep('cart');
+        alert(
+          `Sorry, these items are out of stock:\n\n• ${names.join('\n• ')}\n\nPlease remove them from your basket to continue.`
+        );
+        return false;
+      }
+      return true;
+    } finally {
+      setIsVerifyingStock(false);
+    }
+  };
+
+  const handleRemoveUnavailable = () => {
+    unavailableItems.forEach((item) => onRemoveFromCart(item.product.id));
+  };
+
   const isFreeDelivery = itemTotal >= FREE_DELIVERY_THRESHOLD;
   const deliveryCharge = itemTotal === 0 ? 0 : (isFreeDelivery ? 0 : STANDARD_DELIVERY_CHARGE);
   const amountToFreeDelivery = FREE_DELIVERY_THRESHOLD - itemTotal;
@@ -239,9 +272,10 @@ export default function CartDrawer({
     return Object.keys(errors).length === 0;
   };
 
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
+      if (hasUnavailable || !(await verifyStockOrWarn())) return;
       if (paymentMethod === 'upi') {
         setCheckoutStep('payment_upi');
       } else {
@@ -355,12 +389,27 @@ export default function CartDrawer({
                     </button>
                   </div>
 
+                  {hasUnavailable && (
+                    <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl p-3 flex items-center justify-between gap-3" id="cart-out-of-stock-banner">
+                      <p className="text-[11px] font-bold text-rose-700 dark:text-rose-300 leading-snug">
+                        {unavailableItems.length === 1 ? '1 item in your basket is' : `${unavailableItems.length} items in your basket are`} now out of stock. Remove {unavailableItems.length === 1 ? 'it' : 'them'} to continue.
+                      </p>
+                      <button
+                        onClick={handleRemoveUnavailable}
+                        className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black uppercase px-2.5 py-1.5 rounded-lg transition-colors"
+                        id="remove-out-of-stock-btn"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+
                   {cartItems.map((item) => {
                     const itemSavings = (item.product.mrp - item.product.price) * item.quantity;
                     return (
                       <div
                         key={item.product.id}
-                        className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 flex gap-3 shadow-sm"
+                        className={`bg-white dark:bg-neutral-900 p-3 rounded-xl border flex gap-3 shadow-sm ${isUnavailable(item.product.id) ? 'border-rose-300 dark:border-rose-800 opacity-70' : 'border-neutral-200 dark:border-neutral-800'}`}
                         id={`cart-item-${item.product.id}`}
                       >
                         {/* Miniature Package Preview */}
@@ -375,6 +424,9 @@ export default function CartDrawer({
                               {item.product.name}
                             </h4>
                             <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-semibold">{item.product.unit} pack</p>
+                          {isUnavailable(item.product.id) && (
+                            <p className="text-[10px] font-black text-rose-600 uppercase">Out of stock</p>
+                          )}
                           </div>
 
                           <div className="flex justify-between items-end mt-1">
@@ -401,7 +453,8 @@ export default function CartDrawer({
                               <span className="font-extrabold text-xs select-none">{item.quantity}</span>
                               <button
                                 onClick={() => onUpdateCart(item.product.id, item.quantity + 1)}
-                                className="p-0.5 hover:bg-emerald-800 rounded text-white"
+                                disabled={isUnavailable(item.product.id)}
+                                className="p-0.5 hover:bg-emerald-800 rounded text-white disabled:opacity-30 disabled:cursor-not-allowed"
                                 id={`cart-increment-${item.product.id}`}
                               >
                                 <Plus className="w-3 h-3 stroke-[3]" />
@@ -457,11 +510,15 @@ export default function CartDrawer({
 
                   {/* Proceed button */}
                   <button
-                    onClick={() => setCheckoutStep('checkout')}
-                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 px-4 rounded-xl font-extrabold text-sm shadow-lg flex items-center justify-between transition-colors"
+                    onClick={async () => {
+                      if (hasUnavailable) return;
+                      if (await verifyStockOrWarn()) setCheckoutStep('checkout');
+                    }}
+                    disabled={hasUnavailable || isVerifyingStock}
+                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 px-4 rounded-xl font-extrabold text-sm shadow-lg flex items-center justify-between transition-colors disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed"
                     id="proceed-to-checkout-btn"
                   >
-                    <span>Proceed to Delivery details</span>
+                    <span>{hasUnavailable ? 'Remove out-of-stock items to continue' : isVerifyingStock ? 'Checking availability...' : 'Proceed to Delivery details'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -756,7 +813,8 @@ export default function CartDrawer({
 
                   <button
                     type="submit"
-                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-4 rounded-xl font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition-colors"
+                    disabled={hasUnavailable || isVerifyingStock}
+                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-4 rounded-xl font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition-colors disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed"
                     id="place-order-submit-btn"
                   >
                     <span>
