@@ -4,7 +4,7 @@ import {
   ShoppingBag, Package, Users, LogOut, Check, ArrowRight, Plus, 
   Trash2, Edit, X, Upload, IndianRupee, Eye, Star, Info, ListFilter 
 } from 'lucide-react';
-import { Product, Order } from '../types';
+import { Product, Order, isInStock } from '../types';
 import { products as fallbackProducts } from '../data';
 import { supabase, normalizeSupabaseOrder, normalizeSupabaseProduct } from '../supabase';
 import { compressImage, IMAGE_CACHE_CONTROL } from '../imageUtils';
@@ -37,6 +37,8 @@ export default function OwnerDashboard({ onLogout, token, onBackToStore }: Owner
   // State
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [stockFilter, setStockFilter] = useState<'all' | 'out'>('all');
+  const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   
   // Loaders / Errors
@@ -257,13 +259,27 @@ try {
   };
 
   const handleToggleStock = async (product: Product) => {
+    if (togglingStockId) return;
+    const newStatus = !isInStock(product);
+    setTogglingStockId(product.id);
     try {
-      const { error } = await supabase
+      // .select() makes Supabase return the updated rows, so we can tell when the
+      // update was silently blocked (e.g. by a Row Level Security policy).
+      const { data, error } = await supabase
         .from('products')
-        .update({ inStock: !product.inStock })
-        .eq('id', product.id);
+        .update({ inStock: newStatus })
+        .eq('id', product.id)
+        .select('id, inStock');
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(
+          'Stock was not updated. Check that your Supabase "products" table allows updates (Row Level Security policy).'
+        );
+      }
+
+      // Update the dashboard immediately
+      setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, inStock: newStatus } : p)));
 
       // Also patch local cache so UI stays consistent if offline
       const localProductsStr = localStorage.getItem('annapurna_local_products');
@@ -271,16 +287,17 @@ try {
         const localProducts = JSON.parse(localProductsStr) as Product[];
         const idx = localProducts.findIndex(p => p.id === product.id);
         if (idx !== -1) {
-          localProducts[idx].inStock = !product.inStock;
+          localProducts[idx].inStock = newStatus;
           localStorage.setItem('annapurna_local_products', JSON.stringify(localProducts));
         }
       }
       
-      showSuccess(`${product.name} is now ${!product.inStock ? 'In Stock' : 'Out of Stock'}`);
-      fetchDashboardData();
+      showSuccess(`${product.name} is now ${newStatus ? 'In Stock' : 'Out of Stock - customers cannot order it'}`);
     } catch (err: any) {
       console.error('Failed to toggle stock in Supabase:', err);
       setError(err.message || 'Failed to update stock');
+    } finally {
+      setTogglingStockId(null);
     }
   };
 
@@ -884,6 +901,28 @@ try {
                     exit={{ opacity: 0, y: -10 }}
                     className="space-y-4"
                   >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-bold text-neutral-500">
+                        <span className="text-emerald-700">{products.filter((p) => isInStock(p)).length} in stock</span>
+                        {' · '}
+                        <span className="text-rose-600">{products.filter((p) => !isInStock(p)).length} out of stock</span>
+                        <span className="text-neutral-400 font-semibold"> — click a product's stock badge to switch it</span>
+                      </p>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => setStockFilter('all')}
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border transition-all ${stockFilter === 'all' ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-100'}`}
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => setStockFilter('out')}
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border transition-all ${stockFilter === 'out' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'}`}
+                        >
+                          Out of stock only
+                        </button>
+                      </div>
+                    </div>
                     <div className="overflow-x-auto rounded-2xl border border-neutral-200">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
@@ -896,8 +935,8 @@ try {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-150">
-                          {products.map((p) => (
-                            <tr key={p.id} className="hover:bg-neutral-50">
+                          {products.filter((p) => stockFilter === 'all' || !isInStock(p)).map((p) => (
+                            <tr key={p.id} className={`hover:bg-neutral-50 ${!isInStock(p) ? 'bg-rose-50/40' : ''}`}>
                               <td className="p-3 pl-4">
                                 <div className="flex items-center space-x-3">
                                   {p.image ? (
@@ -939,13 +978,15 @@ try {
                               <td className="p-3">
                                 <button
                                   onClick={() => handleToggleStock(p)}
-                                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border transition-all ${
-                                    p.inStock 
+                                  disabled={togglingStockId === p.id}
+                                  title={isInStock(p) ? 'Click to mark as OUT OF STOCK' : 'Click to mark as back IN STOCK'}
+                                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border transition-all disabled:opacity-50 disabled:cursor-wait ${
+                                    isInStock(p)
                                       ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100' 
                                       : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
                                   }`}
                                 >
-                                  {p.inStock ? '✓ In Stock' : '✗ Out of Stock'}
+                                  {togglingStockId === p.id ? 'Saving...' : isInStock(p) ? '✓ In Stock' : '✗ Out of Stock'}
                                 </button>
                               </td>
                               <td className="p-3 pr-4 text-right">
