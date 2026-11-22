@@ -375,6 +375,18 @@ app.post('/api/orders', authenticateToken as any, (req: AuthRequest, res: Respon
       return res.status(400).json({ error: 'Incomplete order information.' });
     }
 
+    // Reject orders containing products the owner has marked out of stock
+    const catalog = getProducts();
+    const unavailable = (Array.isArray(items) ? items : [])
+      .map((it: any) => catalog.find((p) => p.id === String(it?.product?.id ?? '').split('::')[0]))
+      .filter((p: any) => p && p.inStock === false)
+      .map((p: any) => p.name);
+    if (unavailable.length > 0) {
+      return res.status(409).json({
+        error: `These items are out of stock: ${Array.from(new Set(unavailable)).join(', ')}`,
+      });
+    }
+
     const orderId = `ord-${Math.floor(Math.random() * 90000) + 10000}`;
     const newOrder: Order = {
       id: orderId,
