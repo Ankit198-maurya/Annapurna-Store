@@ -80,6 +80,18 @@ export interface Recipe {
   steps: string[];
 }
 
+// A product counts as available unless the owner has explicitly marked it out of stock.
+// (A missing / null value is treated as "in stock" so older rows keep working.)
+export function isInStock(product?: { inStock?: boolean | null } | null): boolean {
+  return !product || product.inStock !== false;
+}
+
+// Cart lines for size-variants use the id `baseProductId::variantId`.
+// This returns the real product id so stock can be checked against the product itself.
+export function baseProductId(cartId: string): string {
+  return cartId.split('::')[0];
+}
+
 // All gallery images for a product: cover image first, then the extra ones (de-duplicated).
 export function getProductImages(product: Product, fallback: string): string[] {
   const list = [product.image, ...(product.images || [])].filter((u): u is string => !!u && u.trim() !== '');
