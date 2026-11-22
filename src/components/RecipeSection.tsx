@@ -5,11 +5,13 @@ import { Clock, ChefHat, Plus, Check, ShoppingCart, ChevronRight, BookOpen } fro
 import { motion, AnimatePresence } from 'motion/react';
 
 interface RecipeSectionProps {
-  onAddMultipleToCart: (items: { productId: string; quantity: number }[]) => void;
+  onAddMultipleToCart: (items: { productId: string; quantity: number }[]) => string[] | void;
   cartItems: CartItem[];
+  outOfStockIds?: Set<string>; // products the owner has marked out of stock
 }
 
-export default function RecipeSection({ onAddMultipleToCart, cartItems }: RecipeSectionProps) {
+export default function RecipeSection({ onAddMultipleToCart, cartItems, outOfStockIds }: RecipeSectionProps) {
+  const isOutOfStock = (productId: string) => !!outOfStockIds && outOfStockIds.has(productId);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
 
@@ -29,6 +31,7 @@ export default function RecipeSection({ onAddMultipleToCart, cartItems }: Recipe
   };
 
   const toggleIngredientChecked = (productId: string) => {
+    if (isOutOfStock(productId)) return; // can't select unavailable items
     setCheckedIngredients((prev) => ({
       ...prev,
       [productId]: !prev[productId],
@@ -39,21 +42,28 @@ export default function RecipeSection({ onAddMultipleToCart, cartItems }: Recipe
     if (!currentRecipe) return;
 
     const itemsToAdd = currentRecipe.ingredients
-      .filter((ing) => checkedIngredients[ing.productId])
+      .filter((ing) => checkedIngredients[ing.productId] && !isOutOfStock(ing.productId))
       .map((ing) => ({
         productId: ing.productId,
         quantity: ing.quantityRequired,
       }));
 
     if (itemsToAdd.length === 0) {
-      alert('Please select at least one ingredient to add to your basket!');
+      alert('Please select at least one available ingredient to add to your basket!');
       return;
     }
 
     onAddMultipleToCart(itemsToAdd);
 
+    const unavailableCount = currentRecipe.ingredients.filter(
+      (ing) => checkedIngredients[ing.productId] && isOutOfStock(ing.productId)
+    ).length;
+
     // Show a temporary visual success or alert
-    alert(`Successfully added ${itemsToAdd.length} recipe ingredients to your basket!`);
+    alert(
+      `Successfully added ${itemsToAdd.length} recipe ingredients to your basket!` +
+        (unavailableCount > 0 ? `\n(${unavailableCount} out-of-stock ingredient(s) were skipped.)` : '')
+    );
   };
 
   return (
@@ -157,7 +167,8 @@ export default function RecipeSection({ onAddMultipleToCart, cartItems }: Recipe
                           const product = products.find((p) => p.id === ing.productId);
                           if (!product) return null;
 
-                          const isChecked = !!checkedIngredients[ing.productId];
+                          const outOfStock = isOutOfStock(ing.productId);
+                          const isChecked = !!checkedIngredients[ing.productId] && !outOfStock;
                           const alreadyInCart = cartItems.find((ci) => ci.product.id === product.id)?.quantity || 0;
 
                           return (
@@ -168,7 +179,7 @@ export default function RecipeSection({ onAddMultipleToCart, cartItems }: Recipe
                                 isChecked
                                   ? 'bg-white border-emerald-300 shadow-sm'
                                   : 'bg-neutral-100/50 border-neutral-200 opacity-60'
-                              }`}
+                              } ${outOfStock ? '!cursor-not-allowed' : ''}`}
                               id={`ingredient-check-${ing.productId}`}
                             >
                               <div className="flex items-center gap-2.5">
@@ -188,6 +199,11 @@ export default function RecipeSection({ onAddMultipleToCart, cartItems }: Recipe
                               </div>
                               <div className="text-right shrink-0">
                                 <span className="font-extrabold text-xs text-neutral-700">₹{product.price}</span>
+                                {outOfStock && (
+                                  <span className="block text-[8px] bg-rose-50 text-rose-700 px-1 py-0.2 rounded font-black mt-0.5">
+                                    OUT OF STOCK
+                                  </span>
+                                )}
                                 {alreadyInCart > 0 && (
                                   <span className="block text-[8px] bg-emerald-50 text-emerald-700 px-1 py-0.2 rounded font-black mt-0.5">
                                     {alreadyInCart} in basket
@@ -225,7 +241,7 @@ export default function RecipeSection({ onAddMultipleToCart, cartItems }: Recipe
                     <p className="text-lg font-black text-neutral-800">
                       ₹
                       {currentRecipe.ingredients
-                        .filter((ing) => checkedIngredients[ing.productId])
+                        .filter((ing) => checkedIngredients[ing.productId] && !isOutOfStock(ing.productId))
                         .reduce((sum, ing) => {
                           const p = products.find((p) => p.id === ing.productId);
                           return sum + (p ? p.price * ing.quantityRequired : 0);
